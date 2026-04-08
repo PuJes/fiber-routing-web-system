@@ -180,4 +180,14 @@ def plan():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
+    # 自动打开浏览器逻辑
+    import webbrowser
+    from threading import Timer
+
+    def open_browser():
+        webbrowser.open("http://127.0.0.1:5001/")
+
+    # 延迟 2 秒打开，确保 Flask 已经起动
+    Timer(2, open_browser).start()
+    
     app.run(host='0.0.0.0', port=5001)
