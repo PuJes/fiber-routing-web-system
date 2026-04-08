@@ -309,7 +309,11 @@
                 return id;
             }
 
-            const plans = [...(cand.equipment_routing_plans || []), ...(cand.transmission_room_routing_plans || [])];
+            // 处理所有 A 和 B 方案
+            const plansA = Array.isArray(cand.equipment_routing_plans) ? cand.equipment_routing_plans : [];
+            const plansB = Array.isArray(cand.transmission_room_routing_plans) ? cand.transmission_room_routing_plans : [];
+            const plans = [...plansA, ...plansB];
+            
             plans.forEach(plan => {
                 if(!plan || plan.status !== 'success') return;
                 const pathParts = plan.routing.split('->');
