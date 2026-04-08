@@ -53,7 +53,7 @@ def index():
 @app.route('/api/geocode', methods=['POST'])
 def geocode():
     address = request.json.get('address')
-    url = "https://nominatim.openstreetmap.org/search?q=" + urllib.parse.quote(address) + "&format=json&limit=1&addressdetails=1"
+    url = "https://nominatim.openstreetmap.org/search?q=" + urllib.parse.quote(address) + "&format=json&limit=1&addressdetails=1&viewbox=113.7,22.4,114.6,22.9&bounded=1"
     req = urllib.request.Request(url, headers={'User-Agent': 'FiberRoutingPRO/5.17'})
     try:
         with urllib.request.urlopen(req) as response:
