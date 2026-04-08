@@ -190,7 +190,24 @@
             new vis.Network(netContainer, {nodes, edges}, {
                 nodes: { font: { face: 'Inter' } },
                 edges: { font: { align: 'top' } },
-                physics: { enabled: true, stabilization: true }
+                physics: { 
+                    enabled: false, // 禁用物理引擎，防止拖拽时群魔乱舞
+                    stabilization: true 
+                },
+                layout: {
+                    hierarchical: {
+                        enabled: true,
+                        direction: 'LR', // 从左到右排列
+                        sortMethod: 'directed',
+                        levelSeparation: 200,
+                        nodeSpacing: 150
+                    }
+                },
+                interaction: {
+                    dragNodes: true,
+                    dragView: true,
+                    zoomView: true
+                }
             });
         }
     </script>
