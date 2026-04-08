@@ -355,8 +355,13 @@
             });
 
             const options = {
-                physics: { enabled: true, stabilization: { iterations: 200 } },
-                interaction: { dragNodes: true, dragView: true, zoomView: true, hover: true, selectable: true },
+                physics: { 
+                    enabled: true, 
+                    stabilization: { iterations: 200 } 
+                },
+                interaction: { 
+                    dragNodes: true, dragView: true, zoomView: true, hover: true, selectable: true 
+                },
                 layout: {
                     hierarchical: {
                         enabled: true,
@@ -377,18 +382,24 @@
                     const nodeData = nodes.find(n => n.id === nodeId);
                     if (nodeData) {
                         navigator.clipboard.writeText(nodeData.label).then(() => {
-                            // 可选：添加一个简单的提示
-                            alert("已复制机房名称: " + nodeData.label);
+                            // alert("已复制机房名称: " + nodeData.label);
                         });
                     }
                 }
             });
 
+            // 核心：在初次稳定后，立即禁用物理引擎和层级约束，实现“自由定点”
             network.on("stabilizationIterationsDone", () => {
                 network.setOptions({ 
                     layout: { hierarchical: false },
                     physics: { enabled: false } 
                 });
+                console.log("Hierarchy and physics locked for free dragging.");
+            });
+            
+            // 额外保险：开始拖拽时确保物理引擎不会因为交互被意外激活
+            network.on("dragStart", () => {
+                network.setOptions({ physics: { enabled: false } });
             });
         }
     </script>
