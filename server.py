@@ -79,6 +79,10 @@ def generate_markdown_report(data):
     cands = data.get('fap_to_equipment_candidates', [])
     md += f"- **周边 FAP 资源**：系统在周边找到了 **{len(cands)} 个**候选接入点。\n\n---\n\n"
     
+    # 图标和样式配置
+    ROOM_ICON = "🏠"
+    FAP_ICON = "🔌"
+    
     for i, cand in enumerate(cands):
         md += f"## 🏆 方案 {i+1}：接入 {cand['fap_name']}\n"
         md += f"- **起步光交距离**：{cand['distance_to_query_point_meters']} 米\n"
@@ -91,19 +95,33 @@ def generate_markdown_report(data):
             md += f"- **跳数**：{plan_a['jumps']} 跳\n- **总距离**：{plan_a['distance_meters']} 米\n- **终点机房**：{plan_a['found_at_node']}\n\n"
             
             md += "```mermaid\ngraph LR\n"
+            md += "    %% 全局样式定义\n"
+            md += "    classDef default fill:#f9f9f9,stroke:#333,stroke-width:1px;\n"
+            md += "    classDef fap fill:#e1f5fe,stroke:#01579b,stroke-width:2px;\n"
+            md += "    classDef room fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;\n"
+            md += "    linkStyle default stroke:#2ecc71,stroke-width:2px,color:#27ae60;\n\n"
+
             if plan_a['jumps'] == 0:
-                md += f"    A([起点光交]) -- 距离:0m\\n跳数:0跳 --> D(((同机房直连)))\n"
+                md += f"    START((\"{FAP_ICON} 起点光交\")) -- 距离:0m\\n跳数:0跳 --> END(((\"{ROOM_ICON} 同机房直连\")))\n"
+                md += "    class START fap;\n    class END room;\n"
             else:
                 nodes = [plan_a['routing'].split('-(')[0]]
                 for detail in plan_a.get('path_details', []):
                     nodes.append(detail['终端设施'] or detail['终端机房'] or "未知节点")
+                
                 for idx, detail in enumerate(plan_a.get('path_details', [])):
-                    n1 = nodes[idx].replace('(','').replace(')','')
-                    n2 = nodes[idx+1].replace('(','').replace(')','')
-                    free = detail.get('空闲数量', '0')
-                    total = detail.get('中继纤芯数量', '0')
-                    dist = detail.get('长度', '0')
-                    md += f"    N{idx}A[\"{n1}\"] -- 余芯:{free}/{total}\\n距离:{dist}m --> N{idx+1}A[\"{n2}\"]\n"
+                    n1 = nodes[idx]
+                    n2 = nodes[idx+1]
+                    
+                    # 彻底移除所有可能引起语法错误的符号，包括 Mermaid 里的关键分隔符
+                    for char in ['(', ')', '"', '\'', '-', '>', '/', '#', ';', '[', ']', '\\', '\n']:
+                        n1 = n1.replace(char, ' ')
+                        n2 = n2.replace(char, ' ')
+                    
+                    md += f"    N{idx}A[\"{FAP_ICON if idx==0 else ROOM_ICON} {n1.strip()}\"] -- {free}芯_{dist}m --> N{idx+1}A[\"{ROOM_ICON} {n2.strip()}\"]\n"
+                    if idx == 0: md += f"    class N{idx}A fap;\n"
+                    else: md += f"    class N{idx}A room;\n"
+                    md += f"    class N{idx+1}A room;\n"
             md += "```\n\n"
             
             md += "**📡 目标设备清单：**\n\n| 设备名称 | 生命周期状态 |\n| :--- | :--- |\n"
@@ -118,19 +136,31 @@ def generate_markdown_report(data):
             md += f"- **跳数**：{plan_b['jumps']} 跳\n- **总距离**：{plan_b['distance_meters']} 米\n- **终点机房**：{plan_b['found_at_node']}\n\n"
             
             md += "```mermaid\ngraph LR\n"
+            md += "    classDef default fill:#f9f9f9,stroke:#333,stroke-width:1px;\n"
+            md += "    classDef fap fill:#e1f5fe,stroke:#01579b,stroke-width:2px;\n"
+            md += "    classDef room fill:#fff3e0,stroke:#e65100,stroke-width:2px;\n"
+            md += "    linkStyle default stroke:#2ecc71,stroke-width:2px,color:#27ae60;\n\n"
+
             if plan_b['jumps'] == 0:
-                md += f"    A([起点光交]) -- 距离:0m\\n跳数:0跳 --> D(((同机房直连)))\n"
+                md += f"    START((\"{FAP_ICON} 起点光交\")) -- 距离:0m\\n跳数:0跳 --> END(((\"{ROOM_ICON} 同机房直连\")))\n"
+                md += "    class START fap;\n    class END room;\n"
             else:
                 nodes = [plan_b['routing'].split('-(')[0]]
                 for detail in plan_b.get('path_details', []):
                     nodes.append(detail['终端设施'] or detail['终端机房'] or "未知节点")
+                
                 for idx, detail in enumerate(plan_b.get('path_details', [])):
-                    n1 = nodes[idx].replace('(','').replace(')','')
-                    n2 = nodes[idx+1].replace('(','').replace(')','')
-                    free = detail.get('空闲数量', '0')
-                    total = detail.get('中继纤芯数量', '0')
-                    dist = detail.get('长度', '0')
-                    md += f"    N{idx}B[\"{n1}\"] -- 余芯:{free}/{total}\\n距离:{dist}m --> N{idx+1}B[\"{n2}\"]\n"
+                    n1 = nodes[idx]
+                    n2 = nodes[idx+1]
+                    
+                    for char in ['(', ')', '"', '\'', '-', '>', '/', '#', ';', '[', ']', '\\', '\n']:
+                        n1 = n1.replace(char, ' ')
+                        n2 = n2.replace(char, ' ')
+                    
+                    md += f"    N{idx}B[\"{FAP_ICON if idx==0 else ROOM_ICON} {n1.strip()}\"] -- {free}芯_{dist}m --> N{idx+1}B[\"{ROOM_ICON} {n2.strip()}\"]\n"
+                    if idx == 0: md += f"    class N{idx}B fap;\n"
+                    else: md += f"    class N{idx}B room;\n"
+                    md += f"    class N{idx+1}B room;\n"
             md += "```\n\n"
             
             md += "**📡 目标设备清单：**\n\n| 设备名称 | 生命周期状态 |\n| :--- | :--- |\n"

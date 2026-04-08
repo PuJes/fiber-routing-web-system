@@ -239,13 +239,32 @@
                 const result = await response.json();
                 const costTime = performance.now() - startTime;
                 
+                // Custom renderer for Mermaid
+                const renderer = new marked.Renderer();
+                renderer.code = ({ text, lang }) => {
+                    if (lang === 'mermaid') {
+                        return `<pre class="mermaid">${text}</pre>`;
+                    }
+                    return `<pre><code class="language-${lang}">${text}</code></pre>`;
+                };
+
                 // Render Markdown
-                document.getElementById('reportContent').innerHTML = marked.parse(result.markdown);
+                document.getElementById('reportContent').innerHTML = marked.parse(result.markdown, { renderer: renderer });
                 
                 // Render Mermaid
-                await window.mermaid.run({
-                    querySelector: '.mermaid'
-                });
+                if (window.mermaid) {
+                    try {
+                        // Reset the mermaid container state
+                        document.querySelectorAll('.mermaid').forEach(el => {
+                            el.removeAttribute('data-processed');
+                        });
+                        await window.mermaid.run({
+                            querySelector: '.mermaid'
+                        });
+                    } catch (e) {
+                        console.error("Mermaid render error:", e);
+                    }
+                }
                 
                 document.getElementById('calcTime').innerText = `耗时: ${costTime.toFixed(0)}ms`;
                 document.getElementById('calcTime').classList.remove('hidden');
