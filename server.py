@@ -54,7 +54,7 @@ def index():
 def geocode():
     address = request.json.get('address')
     url = "https://nominatim.openstreetmap.org/search?q=" + urllib.parse.quote(address) + "&format=json&limit=1&addressdetails=1"
-    req = urllib.request.Request(url, headers={'User-Agent': 'FiberRoutingPRO/5.9'})
+    req = urllib.request.Request(url, headers={'User-Agent': 'FiberRoutingPRO/5.17'})
     try:
         with urllib.request.urlopen(req) as response:
             data = json.loads(response.read().decode())
@@ -66,9 +66,8 @@ def geocode():
         return jsonify({"error": str(e)}), 500
 
 def generate_markdown_report(data):
-    # 分隔符定义，确保前端渲染一致性
     SEP = "---"
-    md = f"## 📝 勘查全局概述\n\n"
+    md = f"## 📝 1. 勘查全局概述\n\n"
     md += f"- **目标坐标**：`{data['query_coordinates']['lon']}, {data['query_coordinates']['lat']}`\n"
     aois = data.get('matched_aoi_geofence', [])
     md += f"- **命中网格**：`{' | '.join(aois) if aois else '未命中特定园区'}`\n"
@@ -84,20 +83,22 @@ def generate_markdown_report(data):
             res = ""
             if isinstance(plans, list):
                 for j, p in enumerate(plans):
-                    res += f"\n#### {title_label}-{j+1}\n\n"
+                    res += f"#### {title_label}-{j+1}\n\n"
                     res += f"- **链路详情**：{p['jumps']}跳 | {p['distance_meters']}米 | 终点: {p['found_at_node']}\n\n"
                     res += "**📡 目标设备清单**：\n\n"
                     res += "| 网元名称 | 生命周期状态 |\n"
                     res += "| :--- | :--- |\n"
                     for eq in p.get('equipments_found', []):
-                        res += f"| {eq.get('网元名称','')} | {eq.get('生命周期状态','')} |\n"
+                        # 核心修复：极致清洗，确保每一行表格数据都是纯净的单行
+                        n_clean = str(eq.get('网元名称','')).replace('\n', ' ').replace('\r', '').strip()
+                        s_clean = str(eq.get('生命周期状态','')).replace('\n', ' ').replace('\r', '').strip()
+                        res += f"| {n_clean} | {s_clean} |\n"
                     res += "\n"
             return res
 
         md += render_plans(cand.get('equipment_routing_plans', []), "🌟 子方案A (最近接入)")
         md += render_plans(cand.get('transmission_room_routing_plans', []), "🛡️ 子方案B (高可靠传输)")
         
-        # 仅在非最后一个方案后添加分隔符
         if i < len(cands) - 1:
             md += f"\n{SEP}\n\n"
             

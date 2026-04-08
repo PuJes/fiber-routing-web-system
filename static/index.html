@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>智能光纤前勘 PRO | 离线加固版</title>
-    <!-- 优先尝试本地资源，彻底解决网络环境导致的地图加载失败 -->
+    <title>智能光纤前勘 PRO | 极致布局稳定版</title>
     <link rel="stylesheet" href="/libs/tailwind.min.css" />
     <link rel="stylesheet" href="/libs/leaflet.css" />
     <style>
@@ -73,11 +72,13 @@
         .network-container { height: 500px; width: 100%; border: 1px solid var(--slate-100); border-radius: 20px; background: white; margin: 32px 0; }
 
         .markdown-body { line-height: 1.8; color: var(--slate-700); font-size: 15px; }
-        .markdown-body h2 { font-size: 32px; font-weight: 900; color: var(--slate-900); margin-top: 0; margin-bottom: 24px; letter-spacing: -0.02em; }
+        .markdown-body h2 { font-size: 32px; font-weight: 900; color: var(--slate-900); margin-top: 0; margin-bottom: 24px; letter-spacing: -0.02em; border-bottom: 4px solid var(--primary); padding-bottom: 12px; }
         .markdown-body h3 { font-size: 20px; font-weight: 700; color: var(--slate-800); margin-top: 32px; margin-bottom: 16px; border-left: 5px solid var(--primary); padding-left: 15px; }
-        .markdown-body table { width: 100%; border-collapse: collapse; margin: 24px 0; table-layout: fixed; }
+        .markdown-body h4 { font-size: 18px; font-weight: 700; color: var(--slate-700); margin-top: 24px; }
+        .markdown-body table { width: 100%; border-collapse: collapse; margin: 24px 0; table-layout: auto; display: table !important; }
         .markdown-body th { background: var(--slate-50); text-align: left; padding: 16px; font-weight: 700; border-bottom: 2px solid var(--slate-200); color: var(--slate-700); }
         .markdown-body td { padding: 16px; border-bottom: 1px solid var(--slate-100); word-break: break-all; vertical-align: top; }
+        .markdown-body tr:hover td { background: var(--slate-50); }
         
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -91,7 +92,7 @@
                 <span style="font-size:32px;">🦞</span>
                 <span style="font-weight:900; font-size:24px; letter-spacing:-1px;">FIBER ROUTING <span style="color:var(--primary);">PRO</span></span>
             </div>
-            <div style="font-size:13px; font-weight:600; opacity:0.6;">离线加固版 v5.8 Stable</div>
+            <div style="font-size:13px; font-weight:600; opacity:0.6;">终极稳定版 v5.17 Stable</div>
         </nav>
 
         <div class="main-content">
@@ -121,9 +122,6 @@
                 <div class="card" style="padding:10px;">
                     <div class="section-title">Map Preview</div>
                     <div id="map"></div>
-                    <div style="font-size:11px; color:#94a3b8; text-align:center; margin-top:12px;">
-                        地图点击自动执行 GCJ-02 纠偏
-                    </div>
                 </div>
             </aside>
 
@@ -131,41 +129,42 @@
                 <div id="reportContainer" class="report-inner">
                     <div style="text-align:center; padding-top:150px; color:#cbd5e1;">
                         <span style="font-size:100px; display:block; margin-bottom:30px;">🛰️</span>
-                        <p style="font-size:22px; font-weight:800; color:#94a3b8;">等待输入数据以生成交互式拓扑研报</p>
+                        <p style="font-size:22px; font-weight:800; color:#94a3b8;">等待数据输入以生成交互式拓扑研报</p>
                     </div>
                 </div>
             </main>
         </div>
     </div>
 
-    <!-- 加载本地化的脚本资源 -->
     <script src="/libs/leaflet.js"></script>
     <script src="/libs/marked.min.js"></script>
+    <script>
+        // 配置 marked 选项
+        marked.setOptions({
+            gfm: true,
+            breaks: true,
+            tables: true
+        });
+    </script>
     <script src="/libs/vis-network.min.js"></script>
 
     <script>
         let map, marker, isWgs84 = false;
 
         window.onload = () => {
-            try {
-                map = L.map('map', { zoomControl: false }).setView([22.5428, 114.0531], 13);
-                L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
-                    subdomains: ['1', '2', '3', '4'], maxZoom: 18
-                }).addTo(map);
+            map = L.map('map', { zoomControl: false }).setView([22.5428, 114.0531], 13);
+            L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
+                subdomains: ['1', '2', '3', '4'], maxZoom: 18
+            }).addTo(map);
 
-                map.on('click', e => {
-                    document.getElementById('latInput').value = e.latlng.lat.toFixed(6);
-                    document.getElementById('lonInput').value = e.latlng.lng.toFixed(6);
-                    isWgs84 = false;
-                    if(marker) map.removeLayer(marker);
-                    marker = L.marker(e.latlng).addTo(map);
-                    document.getElementById('addressDetail').style.display = 'none';
-                });
-                console.log("Map initialized.");
-            } catch (e) {
-                console.error("Map error:", e);
-                document.getElementById('map').innerHTML = "<div style='padding:20px;color:red'>地图资源加载失败，请检查静态目录。</div>";
-            }
+            map.on('click', e => {
+                document.getElementById('latInput').value = e.latlng.lat.toFixed(6);
+                document.getElementById('lonInput').value = e.latlng.lng.toFixed(6);
+                isWgs84 = false;
+                if(marker) map.removeLayer(marker);
+                marker = L.marker(e.latlng).addTo(map);
+                document.getElementById('addressDetail').style.display = 'none';
+            });
         };
 
         async function searchAddress() {
@@ -190,7 +189,7 @@
 
         async function calculateRoute() {
             const container = document.getElementById('reportContainer');
-            container.innerHTML = '<div style="text-align:center; padding-top:150px;"><p style="font-weight:800;color:#64748b;">深度路网寻踪中...</p></div>';
+            container.innerHTML = '<div style="text-align:center; padding-top:150px;"><p style="font-weight:800;color:#64748b;">路网寻踪中...</p></div>';
             try {
                 const res = await fetch('/api/plan', {
                     method:'POST', headers:{'Content-Type':'application/json'}, 
@@ -213,46 +212,88 @@
             
             const reportParts = data.markdown.split('---');
             
-            // 1. 渲染全局概述
-            const header = document.createElement('div');
-            header.className = "markdown-body mb-8";
-            header.innerHTML = marked.parse(reportParts[0]);
-            container.appendChild(header);
+            // 1. 文字报告主体
+            const textSection = document.createElement('div');
+            textSection.className = "plan-card";
+            
+            // 手动构建 HTML 表格（最稳准狠的方案）
+            function convertMarkdownToHtml(md) {
+                // 处理表格
+                let lines = md.split('\n').map(l => l.trim());
+                let html = "";
+                let inTable = false;
+                let tableHeader = true;
 
-            // 2. 循环处理每一个候选方案（先放文字和表格）
-            const candidates = data.raw_json.fap_to_equipment_candidates;
-            candidates.forEach((cand, i) => {
-                const card = document.createElement('div');
-                card.className = "plan-card";
-                
-                let planMarkdown = reportParts[i + 1] || "无法加载该方案详情";
-                
-                // 彻底解决表格不显示的问题：移除所有行首空格
-                let processedMd = planMarkdown.split('\n')
-                    .map(line => line.trim())
-                    .join('\n');
-                
-                // 针对表格语法的强制修复
-                processedMd = processedMd.replace(/(\|.*\|)\n(\| :---)/g, "$1\n\n$2");
-                processedMd = processedMd.replace(/(\n\| :---.*\|)\n/g, "$1\n\n");
+                for (let i = 0; i < lines.length; i++) {
+                    let line = lines[i];
+                    if (line.startsWith('|')) {
+                        if (!inTable) {
+                            html += '<table style="width:100%; border-collapse:collapse; margin:20px 0; border:1px solid #e2e8f0;">';
+                            inTable = true;
+                            tableHeader = true;
+                        }
+                        
+                        // 跳过对齐行
+                        if (line.includes(':---')) continue;
 
-                card.innerHTML = `
-                    <div class="markdown-body">${marked.parse(processedMd.trim())}</div>
-                    <div class="text-xs font-black text-slate-400 uppercase tracking-widest mt-12 mb-4">交互式路由拓扑图 (Interactive Topology)</div>
-                    <div class="network-container shadow-xl" id="net_combined_${i}"></div>
-                `;
-                container.appendChild(card);
+                        let cells = line.split('|').filter(c => c.trim() !== '' || (line.indexOf('|') !== line.lastIndexOf('|')));
+                        // 修复空单元格分割
+                        cells = line.split('|');
+                        if (cells[0] === '') cells.shift();
+                        if (cells[cells.length-1] === '') cells.pop();
+
+                        html += '<tr>';
+                        cells.forEach(cell => {
+                            let tag = tableHeader ? 'th' : 'td';
+                            let style = "border:1px solid #e2e8f0; padding:12px; text-align:left;";
+                            if(tableHeader) style += "background:#f8fafc; font-weight:bold;";
+                            html += `<${tag} style="${style}">${cell.trim()}</${tag}>`;
+                        });
+                        html += '</tr>';
+                        tableHeader = false;
+                    } else {
+                        if (inTable) {
+                            html += '</table>';
+                            inTable = false;
+                        }
+                        // 处理标题和列表
+                        if (line.startsWith('## ')) html += `<h2 style="font-size:24px; font-weight:800; border-bottom:2px solid #e2e8f0; padding-bottom:8px; margin-top:30px;">${line.substring(3)}</h2>`;
+                        else if (line.startsWith('### ')) html += `<h3 style="font-size:20px; font-weight:700; margin-top:20px;">${line.substring(4)}</h3>`;
+                        else if (line.startsWith('#### ')) html += `<h4 style="font-size:18px; font-weight:700; margin-top:15px; color:#475569;">${line.substring(5)}</h4>`;
+                        else if (line.startsWith('- ')) html += `<p style="margin:8px 0; padding-left:20px;">• ${line.substring(2)}</p>`;
+                        else if (line.trim() !== '') html += `<p style="margin:10px 0;">${line}</p>`;
+                    }
+                }
+                if (inTable) html += '</table>';
+                return html;
+            }
+
+            textSection.innerHTML = `<div class="markdown-body">${convertMarkdownToHtml(data.markdown)}</div>`;
+            container.appendChild(textSection);
+
+            // 2. 拓扑汇总区
+            const imageSection = document.createElement('div');
+            imageSection.innerHTML = `<h2 style="margin-top:60px; font-size:32px; font-weight:900;">🗺️ 路由拓扑图汇总</h2>`;
+            container.appendChild(imageSection);
+
+            data.raw_json.fap_to_equipment_candidates.forEach((cand, i) => {
+                const topoCard = document.createElement('div');
+                topoCard.className = "plan-card";
+                topoCard.innerHTML = `<h3>方案 ${i+1} 拓扑流向: ${cand.fap_name}</h3>
+                                      <div class="network-container shadow-2xl" id="net_combined_${i}"></div>`;
+                container.appendChild(topoCard);
                 renderCombinedNetwork(document.getElementById(`net_combined_${i}`), cand);
             });
         }
 
         function renderCombinedNetwork(container, cand) {
             const nodes = [], edges = [], nodeIds = new Set();
-            const clean = s => String(s).replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, '').trim();
+            const cleanId = s => String(s).replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, '').trim();
 
             function addNode(name, type, isEnd) {
+                // 保留楼层
                 let cleanName = name.replace(/\(.*\)/g, '').split(')-').pop().split(' (目标')[0].trim();
-                const id = clean(cleanName);
+                const id = cleanId(cleanName);
                 if (!nodeIds.has(id)) {
                     nodes.push({
                         id: id, label: cleanName, shape: 'dot', size: 16,
@@ -275,7 +316,8 @@
                 pathParts.forEach((p, idx) => {
                     const nodeId = addNode(p, idx === 0 ? 'fap' : 'mid', idx === pathParts.length - 1);
                     if (idx > 0) {
-                        const prevId = clean(pathParts[idx-1].replace(/\(.*\)/g, '').split(')-').pop().split(' (目标')[0].trim());
+                        const prevRaw = pathParts[idx-1].replace(/\(.*\)/g, '').split(')-').pop().split(' (目标')[0].trim();
+                        const prevId = cleanId(prevRaw);
                         if (!edges.some(e => e.from === prevId && e.to === nodeId)) {
                             const info = plan.path_details[idx-1];
                             edges.push({
@@ -291,7 +333,7 @@
 
             const network = new vis.Network(container, { nodes, edges }, {
                 physics: { enabled: true, stabilization: { iterations: 200 } },
-                interaction: { dragNodes: true, dragView: true, zoomView: true }
+                interaction: { dragNodes: true, dragView: true, zoomView: true, hover: true }
             });
             network.on("stabilizationIterationsDone", () => network.setOptions({ physics: false }));
         }
