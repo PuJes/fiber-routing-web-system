@@ -228,8 +228,8 @@ class FiberRoutingEngine:
         queue = deque([(start_node, [start_node], [], 0, {start_node})])
         found_plans = []
         
-        MAX_DEPTH = 15
-        MAX_ITERATIONS = 3000
+        MAX_DEPTH = 4 # 限制跳数
+        MAX_ITERATIONS = 2000 # 限制遍历节点数
         iterations = 0
 
         while queue and len(found_plans) < max_plans and iterations < MAX_ITERATIONS:
