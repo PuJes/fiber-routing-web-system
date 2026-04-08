@@ -49,7 +49,7 @@ class GeoSpatialEngine:
                             self.aoi_names.append(name)
                             self.aoi_polygons.append(poly)
                 except Exception as e:
-                    print(f"  [AOI 警告] 第 {row_num} 行解析失败: {e}")
+                    pass
 
         print(f"    成功加载 {len(self.aoi_polygons)} 个围栏。耗时: {time.time() - start_time:.2f} 秒。")
 
@@ -96,7 +96,7 @@ class GeoSpatialEngine:
                         'grid': grid
                     })
                 except Exception as e:
-                    print(f"  [FAP 警告] 第 {row_num} 行解析失败: {e}")
+                    pass
         print(f"    成功加载 {len(self.fap_points)} 个FAP设施点。耗时: {time.time() - start_time:.2f} 秒。")
 
     @staticmethod
@@ -194,24 +194,15 @@ class FiberRoutingEngine:
             print(f"--> [网元设备] 正在加载网元数据表: {file_path}")
             f = None
             try:
-                try:
-                    f = open(file_path, mode='r', encoding='utf-8-sig')
-                    reader = csv.DictReader(f)
-                    next(reader, None) 
-                    f.seek(0)
-                    reader = csv.DictReader(f)
-                except UnicodeDecodeError:
-                    if f: f.close()
-                    f = open(file_path, mode='r', encoding='gb18030')
-                    reader = csv.DictReader(f)
-
+                f = open(file_path, mode='r', encoding='gb18030')
+                reader = csv.DictReader(f)
                 valid_count = 0
                 for row_num, row in enumerate(reader, start=2):
                     try:
                         lifecycle = str(row.get('生命周期状态', '')).strip()
                         if "退网" in lifecycle or "废弃" in lifecycle: continue
                         
-                        room = str(row.get('所在机房名称', '')).strip()
+                        room = str(row.get('所属机房', '')).strip()
                         if not room: continue
                         
                         ne_name = str(row.get('网元名称', '')).strip()
@@ -227,7 +218,7 @@ class FiberRoutingEngine:
             finally:
                 if f: f.close()
 
-    def find_multiple_network_equipment(self, start_node, target_network_type, require_ts_room=False, max_plans=3):
+    def find_multiple_network_equipment(self, start_node, target_network_type, require_ts_room=False, max_plans=2):
         start_node = start_node.strip()
         target_network_type = target_network_type.strip().upper()
         
@@ -236,10 +227,17 @@ class FiberRoutingEngine:
             
         queue = deque([(start_node, [start_node], [], 0, {start_node})])
         found_plans = []
+        
+        MAX_DEPTH = 15
+        MAX_ITERATIONS = 3000
+        iterations = 0
 
-        while queue and len(found_plans) < max_plans:
+        while queue and len(found_plans) < max_plans and iterations < MAX_ITERATIONS:
+            iterations += 1
             curr_node, path_nodes, path_edges, jumps, visited = queue.popleft()
             
+            if jumps > MAX_DEPTH: continue
+
             if curr_node in self.node_equipments:
                 equip_dict = self.node_equipments[curr_node]
                 if target_network_type in equip_dict and len(equip_dict[target_network_type]) > 0:
@@ -278,14 +276,13 @@ class FiberRoutingEngine:
             
             for edge in self.graph[curr_node]:
                 neighbor = edge['target']
-                e_data = edge['data']
                 if neighbor not in visited:
                     new_visited = visited.copy()
                     new_visited.add(neighbor)
                     queue.append((
                         neighbor,
                         path_nodes + [neighbor],
-                        path_edges + [e_data],
+                        path_edges + [edge['data']],
                         jumps + 1,
                         new_visited
                     ))
@@ -316,7 +313,7 @@ def find_fap_to_equipment_route(geo_engine, route_engine, lon, lat, target_netwo
             start_node=fap_physical_location, 
             target_network_type=target_network_type,
             require_ts_room=False,
-            max_plans=2
+            max_plans=2 
         )
         
         ts_room_route_results = route_engine.find_multiple_network_equipment(
