@@ -3,81 +3,119 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>智能光纤前勘 4.5 | 修正版</title>
-    <!-- 引入国内加速的静态资源 -->
+    <title>智能光纤前勘系统 5.0 | 专业版</title>
     <script src="https://cdn.bootcdn.net/ajax/libs/tailwindcss/2.2.19/tailwind.min.js"></script>
     <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/leaflet/1.9.4/leaflet.css" />
     <script src="https://cdn.bootcdn.net/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
     <script src="https://cdn.bootcdn.net/ajax/libs/marked/4.3.0/marked.min.js"></script>
     <script src="https://cdn.bootcdn.net/ajax/libs/vis-network/9.1.9/standalone/umd/vis-network.min.js"></script>
     <style>
-        .map-container { height: 350px; width: 100%; border-radius: 0.5rem; background: #eee; }
-        .network-container { height: 600px; width: 100%; border: 1px solid #cbd5e1; border-radius: 0.75rem; background: #ffffff; margin-top: 1rem; position: relative; }
-        .markdown-body h2 { font-size: 1.5rem; font-weight: bold; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.5rem; margin-top: 1.5rem; margin-bottom: 1rem; color: #1e293b; }
-        .markdown-body h3 { font-size: 1.25rem; font-weight: bold; margin-top: 1.25rem; margin-bottom: 0.5rem; color: #334155; }
-        .markdown-body ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1rem; }
-        .markdown-body table { width: 100%; border-collapse: collapse; margin-bottom: 1.5rem; }
-        .markdown-body th, .markdown-body td { border: 1px solid #cbd5e1; padding: 0.5rem; text-align: left; }
-        .markdown-body th { background: #f1f5f9; }
+        body { background-color: #f1f5f9; }
+        .sidebar { height: calc(100vh - 64px); position: sticky; top: 64px; }
+        .report-area { min-height: calc(100vh - 64px); }
+        .map-container { height: 300px; width: 100%; border-radius: 0.75rem; background: #e2e8f0; }
+        .network-container { height: 500px; width: 100%; border: 1px solid #cbd5e1; border-radius: 0.75rem; background: #ffffff; margin-top: 1rem; }
+        .markdown-body h2 { font-size: 1.5rem; font-weight: 800; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.5rem; margin-top: 1.5rem; margin-bottom: 1rem; color: #1e293b; }
+        .markdown-body h3 { font-size: 1.1rem; font-weight: 700; margin-top: 1.25rem; margin-bottom: 0.5rem; color: #334155; display: flex; align-items: center; }
+        .markdown-body ul { list-style-type: none; padding-left: 0; margin-bottom: 1rem; }
+        .markdown-body li { margin-bottom: 0.4rem; padding: 0.5rem; background: white; border-radius: 0.5rem; border: 1px solid #f1f5f9; }
+        .markdown-body table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; font-size: 0.85rem; border-radius: 0.5rem; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .markdown-body th, .markdown-body td { border: 1px solid #e2e8f0; padding: 0.6rem; text-align: left; }
+        .markdown-body th { background: #f8fafc; font-weight: 600; color: #475569; }
+        
+        /* 滚动条美化 */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-900 font-sans min-h-screen flex flex-col">
-    <nav class="bg-slate-800 text-white shadow-xl">
-        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+<body class="text-slate-900 font-sans antialiased">
+    <!-- Top Navbar -->
+    <nav class="bg-slate-900 text-white shadow-xl h-16 flex items-center sticky top-0 z-50">
+        <div class="max-w-[1800px] mx-auto px-6 w-full flex items-center justify-between">
             <div class="flex items-center space-x-3">
                 <span class="text-3xl">🦞</span>
-                <span class="font-extrabold text-xl tracking-tight">智能光纤前勘系统 4.5</span>
-                <span class="text-[10px] bg-sky-500 px-2 py-0.5 rounded font-bold uppercase">Stability Fixed</span>
+                <span class="font-black text-xl tracking-tight uppercase italic">Fiber Routing <span class="text-sky-400">PRO</span></span>
+                <span class="text-[10px] bg-slate-700 px-2 py-0.5 rounded text-slate-400 font-mono">v5.0 Stable</span>
             </div>
+            <div class="text-xs text-slate-400 font-medium">智能光纤寻路与前勘自动化系统</div>
         </div>
     </nav>
 
-    <main class="flex-grow max-w-[1600px] mx-auto px-4 py-6 w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div class="lg:col-span-3 space-y-4">
-            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-                <h3 class="font-bold mb-3 flex items-center text-slate-700">🔍 地址定位</h3>
-                <div class="flex space-x-2">
-                    <input type="text" id="addressInput" class="flex-1 border rounded-lg p-2 text-sm focus:ring-2 focus:ring-sky-500 outline-none" placeholder="大厦或园区名称">
-                    <button onclick="searchAddress()" class="bg-sky-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-sky-700">定位</button>
+    <div class="max-w-[1800px] mx-auto flex flex-col lg:flex-row">
+        
+        <!-- Left Sidebar: Controls -->
+        <aside class="lg:w-[400px] sidebar bg-white border-r border-slate-200 p-6 overflow-y-auto shrink-0">
+            <div class="space-y-8">
+                <!-- Search Section -->
+                <section>
+                    <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">1. 地址解析定位</label>
+                    <div class="flex space-x-2">
+                        <input type="text" id="addressInput" class="flex-1 border border-slate-200 rounded-xl p-3 text-sm focus:ring-4 focus:ring-sky-100 focus:border-sky-500 outline-none transition-all shadow-sm" placeholder="输入大厦/园区名称...">
+                        <button onclick="searchAddress()" class="bg-slate-900 text-white px-5 rounded-xl text-sm font-bold hover:bg-slate-800 active:scale-95 transition-all shadow-md">定位</button>
+                    </div>
+                </section>
+
+                <!-- Configuration Section -->
+                <section>
+                    <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">2. 算路参数设置</label>
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div class="space-y-1">
+                            <span class="text-[10px] text-slate-400 font-bold ml-1">经度 (LON)</span>
+                            <input type="number" id="lonInput" step="0.000001" class="w-full border border-slate-200 rounded-xl p-3 text-sm font-mono focus:border-sky-500 outline-none bg-slate-50" placeholder="114.xxx">
+                        </div>
+                        <div class="space-y-1">
+                            <span class="text-[10px] text-slate-400 font-bold ml-1">纬度 (LAT)</span>
+                            <input type="number" id="latInput" step="0.000001" class="w-full border border-slate-200 rounded-xl p-3 text-sm font-mono focus:border-sky-500 outline-none bg-slate-50" placeholder="22.xxx">
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-1 mb-6">
+                        <span class="text-[10px] text-slate-400 font-bold ml-1">目标寻路网络</span>
+                        <select id="networkType" class="w-full border border-slate-200 rounded-xl p-3 text-sm bg-slate-50 focus:border-sky-500 outline-none cursor-pointer appearance-none">
+                            <option value="PTN">PTN (分组传送网)</option>
+                            <option value="OTN">OTN (光传送网)</option>
+                        </select>
+                    </div>
+
+                    <button id="calcBtn" onclick="calculateRoute()" class="w-full bg-emerald-600 text-white py-4 rounded-2xl font-black text-lg hover:bg-emerald-500 active:scale-[0.98] transition-all shadow-lg shadow-emerald-200 group flex items-center justify-center">
+                        <span class="mr-2">🚀</span> 启动极速算路
+                    </button>
+                </section>
+
+                <!-- Map Section -->
+                <section>
+                    <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">3. 实时地图点位</label>
+                    <div id="map" class="map-container border border-slate-200 shadow-sm overflow-hidden"></div>
+                    <p class="text-[10px] text-slate-400 mt-2 text-center">※ 支持在地图上直接点击选点寻路</p>
+                </section>
+            </div>
+        </aside>
+
+        <!-- Right Main: Report Area -->
+        <main class="flex-1 report-area p-8 lg:p-12">
+            <div id="reportContainer" class="max-w-4xl mx-auto">
+                <div class="flex flex-col items-center justify-center min-h-[600px] text-slate-300">
+                    <div class="bg-white p-10 rounded-[3rem] shadow-2xl shadow-slate-200 flex flex-col items-center">
+                        <span class="text-8xl mb-6 grayscale opacity-20">📡</span>
+                        <p class="text-2xl font-black text-slate-400 tracking-tight">等待输入目标坐标进行勘查</p>
+                        <p class="text-sm mt-2 text-slate-300">算法引擎 5.0 已就绪，查询响应时间预计 < 50ms</p>
+                    </div>
                 </div>
             </div>
-
-            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-                <h3 class="font-bold mb-3 flex items-center text-slate-700">📍 算路设置</h3>
-                <div class="grid grid-cols-2 gap-3 mb-4">
-                    <input type="number" id="lonInput" step="0.000001" class="border rounded-lg p-2 text-sm" placeholder="经度">
-                    <input type="number" id="latInput" step="0.000001" class="border rounded-lg p-2 text-sm" placeholder="纬度">
-                </div>
-                <select id="networkType" class="w-full border rounded-lg p-2 text-sm mb-4 bg-slate-50">
-                    <option value="PTN">PTN 分组传送网</option>
-                    <option value="OTN">OTN 光传送网</option>
-                </select>
-                <button id="calcBtn" onclick="calculateRoute()" class="w-full bg-emerald-600 text-white py-3 rounded-lg font-bold hover:bg-emerald-700 shadow-lg transition-all">🚀 启动全路径前勘</button>
-            </div>
-
-            <div id="map" class="map-container border border-slate-200 shadow-sm"></div>
-        </div>
-
-        <div class="lg:col-span-9 bg-white p-6 rounded-xl shadow-sm border border-slate-200 overflow-y-auto min-h-[800px]">
-            <div id="reportContainer">
-                <div class="flex flex-col items-center justify-center h-[600px] text-slate-300">
-                    <span class="text-6xl mb-4">🗺️</span>
-                    <p class="text-xl font-medium">请设定目标点以生成交互拓扑报告</p>
-                </div>
-            </div>
-        </div>
-    </main>
+        </main>
+    </div>
 
     <script>
-        // 延迟初始化确保 Leaflet 加载
         let map, marker;
         function initMap() {
             try {
-                map = L.map('map').setView([22.5428, 114.0531], 13);
+                map = L.map('map', { zoomControl: false }).setView([22.5428, 114.0531], 13);
+                L.control.zoom({ position: 'bottomright' }).addTo(map);
                 L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
                     subdomains: ['1', '2', '3', '4'],
-                    maxZoom: 18,
-                    attribution: '© AutoNavi'
+                    maxZoom: 18
                 }).addTo(map);
 
                 map.on('click', e => {
@@ -86,10 +124,8 @@
                     if(marker) map.removeLayer(marker);
                     marker = L.marker(e.latlng).addTo(map);
                 });
-                console.log("Map initialized successfully");
             } catch (e) {
                 console.error("Map init error:", e);
-                document.getElementById('map').innerHTML = "<div class='p-4 text-red-500'>地图加载失败，请刷新页面重试。</div>";
             }
         }
 
@@ -111,7 +147,7 @@
 
         async function calculateRoute() {
             const container = document.getElementById('reportContainer');
-            container.innerHTML = '<div class="flex flex-col items-center justify-center h-[600px] text-slate-500"><div class="animate-spin rounded-full h-12 w-12 border-b-2 border-sky-600 mb-4"></div><p>路网寻踪中...</p></div>';
+            container.innerHTML = '<div class="flex flex-col items-center justify-center min-h-[600px]"><div class="animate-ping h-8 w-8 rounded-full bg-emerald-400 opacity-75 mb-4"></div><p class="font-black text-slate-500 animate-pulse uppercase tracking-widest">Processing Fiber Routes...</p></div>';
             
             try {
                 const res = await fetch('/api/plan', {
@@ -126,26 +162,38 @@
                 const result = await res.json();
                 renderReport(result);
             } catch(e) {
-                container.innerHTML = `<div class="p-4 bg-red-50 text-red-600 rounded-lg">计算失败: ${e.message}</div>`;
+                container.innerHTML = `<div class="p-6 bg-red-50 text-red-600 rounded-2xl border-2 border-red-100 font-bold">❌ 计算引擎响应异常: ${e.message}</div>`;
             }
         }
 
         function renderReport(data) {
             const container = document.getElementById('reportContainer');
             container.innerHTML = ""; 
+            
+            // 1. Overview Header
             const header = document.createElement('div');
-            header.className = "markdown-body mb-8";
-            header.innerHTML = marked.parse(data.markdown);
+            header.className = "markdown-body mb-12";
+            header.innerHTML = marked.parse(data.markdown.split('---')[0]);
             container.appendChild(header);
 
+            // 2. Candidates
             data.raw_json.fap_to_equipment_candidates.forEach((cand, i) => {
-                const card = document.createElement('div');
-                card.className = "mb-12 p-6 bg-slate-50 rounded-2xl border border-slate-200";
-                card.innerHTML = `
-                    <h2 class="text-2xl font-black text-slate-800 mb-4">方案 ${i+1}: ${cand.fap_name}</h2>
-                    <div class="network-container shadow-xl" id="net_combined_${i}"></div>
+                const section = document.createElement('section');
+                section.className = "mb-20";
+                section.innerHTML = `
+                    <div class="flex items-baseline space-x-4 mb-6">
+                        <h2 class="text-3xl font-black text-slate-900 m-0">方案 ${i+1}: ${cand.fap_name}</h2>
+                        <span class="text-slate-400 font-mono text-sm">FAP DIST: ${cand.distance_to_query_point_meters}m</span>
+                    </div>
+                    <div class="bg-white p-8 rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100">
+                        <div class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Interactive Topology View</div>
+                        <div class="network-container" id="net_combined_${i}"></div>
+                        <div class="mt-8 markdown-body">
+                            ${marked.parse(data.markdown.split('---')[i+1] || "")}
+                        </div>
+                    </div>
                 `;
-                container.appendChild(card);
+                container.appendChild(section);
                 renderCombinedNetwork(document.getElementById(`net_combined_${i}`), cand);
             });
         }
@@ -159,9 +207,13 @@
                 const id = clean(cleanName);
                 if (!nodeIds.has(id)) {
                     nodes.push({
-                        id: id, label: cleanName, shape: 'dot', size: 15,
-                        font: { size: 12, vadjust: -35 },
-                        color: type === 'fap' ? '#3b82f6' : (isEnd ? '#10b981' : '#94a3b8')
+                        id: id, label: cleanName, shape: 'dot', size: 12,
+                        font: { size: 11, vadjust: -30, color: '#64748b' },
+                        color: {
+                            background: type === 'fap' ? '#3b82f6' : (isEnd ? '#10b981' : '#cbd5e1'),
+                            border: type === 'fap' ? '#2563eb' : (isEnd ? '#059669' : '#94a3b8')
+                        },
+                        borderWidth: 2
                     });
                     nodeIds.add(id);
                 }
@@ -180,9 +232,9 @@
                             const info = plan.path_details[idx-1];
                             edges.push({
                                 from: prevId, to: nodeId, 
-                                label: `${info.空闲数量}芯\n${info.长度}m`,
-                                font: { size: 10, align: 'middle' },
-                                arrows: 'to', color: '#10b981', width: 2, smooth: false
+                                label: `${info.空闲数量}芯/${info.长度}m`,
+                                font: { size: 9, align: 'top', color: '#10b981' },
+                                arrows: 'to', color: { color:'#10b981', opacity: 0.4 }, width: 2, smooth: false
                             });
                         }
                     }
@@ -190,7 +242,7 @@
             });
 
             const network = new vis.Network(container, { nodes, edges }, {
-                physics: { enabled: true, stabilization: { iterations: 200 } },
+                physics: { enabled: true, stabilization: { iterations: 150 } },
                 interaction: { dragNodes: true, dragView: true, zoomView: true }
             });
             network.on("stabilizationIterationsDone", () => network.setOptions({ physics: false }));
