@@ -1,8 +1,9 @@
-import csv
+import os
+import sys
 import time
+import csv
 import math
 import heapq
-import json
 from collections import defaultdict, deque
 from shapely.geometry import Point, Polygon
 from shapely.strtree import STRtree
@@ -45,14 +46,8 @@ class GeoSpatialEngine:
                     if len(coords) >= 3:
                         poly = Polygon(coords)
                         if poly.is_valid:
-                            self.aoi_polygons.append(poly)
                             self.aoi_names.append(name)
-                        else:
-                            fixed_poly = poly.buffer(0)
-                            if fixed_poly.is_valid:
-                                self.aoi_polygons.append(fixed_poly)
-                                self.aoi_names.append(name)
-                except IndexError: pass
+                            self.aoi_polygons.append(poly)
                 except Exception as e:
                     print(f"  [AOI 警告] 第 {row_num} 行解析失败: {e}")
 
@@ -195,7 +190,6 @@ class FiberRoutingEngine:
                 print(f"读取文件 {file_path} 时发生严重错误: {e}")
 
     def _load_network_elements(self, csv_files):
-        """解析网元CSV表，使用原生 CSV 库读取并挂载"""
         for file_path in csv_files:
             print(f"--> [网元设备] 正在加载网元数据表: {file_path}")
             f = None
@@ -215,94 +209,23 @@ class FiberRoutingEngine:
                 for row_num, row in enumerate(reader, start=2):
                     try:
                         lifecycle = str(row.get('生命周期状态', '')).strip()
-                        network_type = str(row.get('所属网络', '')).strip().upper()
-                        room = str(row.get('所属机房', '')).strip()
-                        ne_name = str(row.get('网元名称', '')).strip()
+                        if "退网" in lifecycle or "废弃" in lifecycle: continue
                         
-                        if "退网" in lifecycle: continue
-                        if not network_type or network_type == "PON": continue
+                        room = str(row.get('所在机房名称', '')).strip()
                         if not room: continue
-                        if not ne_name: continue
-                            
-                        self.node_equipments[room][network_type].append({
-                            "网元名称": ne_name,
-                            "生命周期状态": lifecycle
-                        })
                         
-                        if room not in self.graph:
-                            self.graph[room] = []
-                            
+                        ne_name = str(row.get('网元名称', '')).strip()
+                        if "OTN" in ne_name.upper():
+                            self.node_equipments[room]["OTN"].append({"网元名称": ne_name, "生命周期状态": lifecycle})
+                        elif "PTN" in ne_name.upper() or "SPN" in ne_name.upper():
+                            self.node_equipments[room]["PTN"].append({"网元名称": ne_name, "生命周期状态": lifecycle})
                         valid_count += 1
-                    except Exception:
-                        pass
+                    except Exception: pass
                 print(f"    成功解析并挂载了 {valid_count} 个有效网元。")
             except Exception as e:
                 print(f"读取网元文件 {file_path} 时发生严重错误: {e}")
             finally:
                 if f: f.close()
-
-    def generate_routing_plans_raw(self, start_node, max_plans=4):
-        start_node = start_node.strip()
-        if start_node not in self.graph:
-            return {"error": f"未在网络中找到起点 [{start_node}] 或已无空闲芯数"}
-
-        if "传输1" in start_node:
-            return [{
-                "routing": f"{start_node} (该节点即为汇聚机房)",
-                "counts": 0,
-                "distance": 0.0,
-                "details": []
-            }]
-
-        queue = deque([(start_node, [start_node], [], {start_node})])
-        results = []
-        unique_node_paths = set() 
-
-        while queue and len(results) < max_plans:
-            curr_node, path_nodes, path_edges, visited = queue.popleft()
-            for edge in self.graph[curr_node]:
-                neighbor = edge['target']
-                edge_data = edge['data']
-                
-                if neighbor not in visited:
-                    new_path_nodes = path_nodes + [neighbor]
-                    new_path_edges = path_edges + [edge_data]
-
-                    if "传输1" in neighbor:
-                        node_tuple = tuple(new_path_nodes)
-                        if node_tuple not in unique_node_paths:
-                            unique_node_paths.add(node_tuple)
-                            results.append((new_path_nodes, new_path_edges))
-                            if len(results) >= max_plans: break
-                    else:
-                        new_visited = visited.copy()
-                        new_visited.add(neighbor)
-                        queue.append((neighbor, new_path_nodes, new_path_edges, new_visited))
-
-        output_plans = []
-        for path_nodes, path_edges in results:
-            total_distance = 0.0
-            counts = len(path_edges)
-            routing_str = path_nodes[0]
-            
-            for node, edge_data in zip(path_nodes[1:], path_edges):
-                try: total_distance += float(edge_data['长度']) if edge_data['长度'] else 0.0
-                except ValueError: pass
-                
-                free_count = str(edge_data['空闲数量']).strip() or "0"
-                total_core = str(edge_data['中继纤芯数量']).strip() or "0"
-                routing_str += f"-({free_count}/{total_core})->{node}"
-            
-            output_plans.append({
-                "routing": routing_str,
-                "counts": counts,
-                "distance": round(total_distance, 2),
-                "details": path_edges
-            })
-
-        if not output_plans:
-            return {"error": "无法找到通往汇聚机房的空闲路由路径"}
-        return output_plans
 
     def find_multiple_network_equipment(self, start_node, target_network_type, require_ts_room=False, max_plans=3):
         start_node = start_node.strip()
@@ -313,7 +236,6 @@ class FiberRoutingEngine:
             
         queue = deque([(start_node, [start_node], [], 0, {start_node})])
         found_plans = []
-        found_nodes = set() # 限制每个机房只出一个方案，或者根据路径排重
 
         while queue and len(found_plans) < max_plans:
             curr_node, path_nodes, path_edges, jumps, visited = queue.popleft()
@@ -328,7 +250,6 @@ class FiberRoutingEngine:
                             is_target = False
                     
                     if is_target:
-                        # 生成路径详情
                         total_distance = 0.0
                         for edge in path_edges:
                             try: total_distance += float(edge['长度']) if edge['长度'] else 0.0
@@ -354,7 +275,6 @@ class FiberRoutingEngine:
                             "path_details": path_edges
                         })
                         if len(found_plans) >= max_plans: break
-                        # 继续搜其他路径
             
             for edge in self.graph[curr_node]:
                 neighbor = edge['target']
@@ -371,71 +291,9 @@ class FiberRoutingEngine:
                     ))
         return found_plans if found_plans else {"error": "未找到方案"}
 
-                    
-            for edge in self.graph[curr_node]:
-                neighbor = edge['target']
-                edge_data = edge['data']
-                
-                if neighbor not in visited:
-                    new_visited = visited.copy()
-                    new_visited.add(neighbor)
-                    queue.append((
-                        neighbor,
-                        path_nodes + [neighbor],
-                        path_edges + [edge_data],
-                        jumps + 1,
-                        new_visited
-                    ))
-                    
-        return {"error": f"寻路失败：在整个连通网络中未能找到可达的 [{target_network_type}] 网元设备。"}
-
-
-# ==========================================
-# 顶层调度器：统一调用接口
-# ==========================================
-def comprehensive_query(geo_engine, route_engine, lon, lat):
-    print(f"\n开始综合评估坐标点: ({lon}, {lat})")
-    start_time = time.time()
-    
-    geo_result = geo_engine.query_location(lon, lat, top_k_fap=3)
-    matched_aois = geo_result['matched_aois']
-    nearest_faps = geo_result['nearest_faps']
-    
-    final_output = {
-        "query_coordinates": {"lon": lon, "lat": lat},
-        "matched_aoi_geofence": matched_aois,
-        "fap_routing_candidates": []
-    }
-    
-    for i, fap in enumerate(nearest_faps, start=1):
-        fap_name = fap['name']
-        fap_physical_location = fap['physical_loc']
-        fap_distance = fap['distance']
-        
-        # 将 FAP 物理点传入路网引擎寻找 4 个跳纤方案
-        routing_plans = route_engine.generate_routing_plans_raw(fap_physical_location, max_plans=4)
-        
-        final_output["fap_routing_candidates"].append({
-            "candidate_rank": i,
-            "fap_name": fap_name,
-            "fap_physical_location": fap_physical_location,
-            "fap_grid": fap['grid'],
-            "distance_to_query_point_meters": round(fap_distance, 2),
-            "routing_plans": routing_plans
-        })
-        
-    final_output["total_query_cost_ms"] = round((time.time() - start_time) * 1000, 2)
-    return final_output
-
-
-# ==========================================
-# 测试与使用示例
-# ==========================================
-
 def find_fap_to_equipment_route(geo_engine, route_engine, lon, lat, target_network_type="OTN"):
     print(f"\n[业务场景 3：经纬度 -> 周边FAP -> 最近的 {target_network_type} 网元设备]")
     print(f"--> 开始评估坐标: ({lon}, {lat})")
-    import time
     start_time = time.time()
     
     geo_result = geo_engine.query_location(lon, lat, top_k_fap=3)
@@ -454,7 +312,6 @@ def find_fap_to_equipment_route(geo_engine, route_engine, lon, lat, target_netwo
         fap_physical_location = fap["physical_loc"]
         fap_distance = fap["distance"]
         
-        # 1. 寻找多套绝对最近的候选方案
         nearest_route_results = route_engine.find_multiple_network_equipment(
             start_node=fap_physical_location, 
             target_network_type=target_network_type,
@@ -462,7 +319,6 @@ def find_fap_to_equipment_route(geo_engine, route_engine, lon, lat, target_netwo
             max_plans=2
         )
         
-        # 2. 寻找多套最近的传输/汇聚机房候选方案
         ts_room_route_results = route_engine.find_multiple_network_equipment(
             start_node=fap_physical_location, 
             target_network_type=target_network_type,
@@ -479,49 +335,24 @@ def find_fap_to_equipment_route(geo_engine, route_engine, lon, lat, target_netwo
             "equipment_routing_plans": nearest_route_results,
             "transmission_room_routing_plans": ts_room_route_results
         }
-        
         final_output["fap_to_equipment_candidates"].append(candidate_info)
         
     cost = (time.time() - start_time) * 1000
     print(f"--> [全链路寻址完毕，总耗时: {cost:.2f} 毫秒]")
-    
     return final_output
 
-
 if __name__ == "__main__":
-    # 【文件路径配置】
     AOI_CSV = "7级AOI（末端网格）0204.csv"
     FAP_CSV = "合规的FAP设施点0202.csv"
     RELAY_CSVS = ["中继段-1.CSV", "中继段-2.CSV"]
+    NE_CSVS = ["传输网元查询-2026-02-10-1770716023730_1.csv", "传输网元查询-2026-02-10-1770716023730_2.csv"]
     
-    # 填入手动另存为 CSV 格式后的网元数据表路径
-    NE_CSVS = [
-        "传输网元查询-2026-02-10-1770716023730_1.csv", 
-        "传输网元查询-2026-02-10-1770716023730_2.csv"
-    ]
-    
-    # 1. 启动两台核心引擎
     geo_engine = GeoSpatialEngine(AOI_CSV, FAP_CSV)
     route_engine = FiberRoutingEngine(RELAY_CSVS, NE_CSVS)
     
-    print("==================================================")
-    print("所有系统准备就绪，开始执行任务...")
-    print("==================================================")
-
-    
-
-    import sys
     import json
-    
+    import sys
     if len(sys.argv) >= 3:
-        lon = float(sys.argv[1])
-        lat = float(sys.argv[2])
+        lon, lat = float(sys.argv[1]), float(sys.argv[2])
         target_type = sys.argv[3] if len(sys.argv) > 3 else "OTN"
-        test_coords = [(lon, lat)]
-    else:
-        test_coords = [(114.36658, 22.71342)]  # 坪山万国
-        target_type = "OTN"
-    
-    for lon, lat in test_coords:
-        combined_result = find_fap_to_equipment_route(geo_engine, route_engine, lon, lat, target_type)
-        print(json.dumps(combined_result, ensure_ascii=False, indent=4))
+        print(json.dumps(find_fap_to_equipment_route(geo_engine, route_engine, lon, lat, target_type), ensure_ascii=False, indent=4))
