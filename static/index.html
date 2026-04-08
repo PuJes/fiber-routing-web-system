@@ -5,10 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>智能光纤前勘 4.0 | 多路径交互拓扑版</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <script src="https://cdn.bootcdn.net/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <script type="text/javascript" src="https://cdn.bootcdn.net/ajax/libs/vis-network/9.1.9/standalone/umd/vis-network.min.js"></script>
+
     <style>
         .map-container { height: 300px; width: 100%; border-radius: 0.5rem; }
         .network-container { height: 600px; width: 100%; border: 1px solid #cbd5e1; border-radius: 0.75rem; background: #ffffff; margin-top: 1rem; position: relative; }
@@ -71,8 +72,15 @@
     </main>
 
     <script>
+        // Init Map
         const map = L.map('map').setView([22.5428, 114.0531], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        // 换成国内更稳定的高德底图源
+        L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
+            subdomains: ['1', '2', '3', '4'],
+            minZoom: 3,
+            maxZoom: 18,
+            attribution: '© AutoNavi'
+        }).addTo(map);
         let marker = null;
 
         map.on('click', e => {
