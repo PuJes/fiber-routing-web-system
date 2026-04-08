@@ -168,23 +168,40 @@
         };
 
         async function searchAddress() {
+            const btn = document.querySelector('.btn-primary');
             const addr = document.getElementById('addressInput').value;
+            const detailBox = document.getElementById('addressDetail');
+            
             if(!addr) return;
+            if(btn) btn.innerText = "检索中...";
+            detailBox.style.display = 'block';
+            detailBox.innerHTML = '<div style="color:#64748b">📡 正在搜索...请稍候</div>';
+            
             try {
-                const res = await fetch('/api/geocode', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({address:addr})});
+                const res = await fetch('/api/geocode', {
+                    method:'POST', 
+                    headers:{'Content-Type':'application/json'}, 
+                    body:JSON.stringify({address:addr})
+                });
                 const data = await res.json();
+                
                 if(data.lon) {
                     document.getElementById('lonInput').value = data.lon;
                     document.getElementById('latInput').value = data.lat;
                     isWgs84 = true;
-                    const detailBox = document.getElementById('addressDetail');
-                    detailBox.style.display = 'block';
-                    detailBox.innerHTML = `<strong>📍 匹配目标：</strong><br>${data.display_name}`;
+                    detailBox.innerHTML = `<strong>✅ 匹配目标：</strong><br>${data.display_name}`;
+                    const pos = [data.lat, data.lon];
                     if(marker) map.removeLayer(marker);
-                    marker = L.marker([data.lat, data.lon]).addTo(map);
-                    map.setView([data.lat, data.lon], 16);
+                    marker = L.marker(pos).addTo(map);
+                    map.setView(pos, 16);
+                } else {
+                    detailBox.innerHTML = `<strong style="color:#dc2626;">❌ 未找到地址</strong><br>${data.error || '建议添加具体城市名，如：东莞清水路'}`;
                 }
-            } catch(e) {}
+            } catch(e) {
+                detailBox.innerHTML = `<strong style="color:#dc2626;">⚠️ 网络连接超时</strong><br>地图接口响应过慢，建议直接在地图上选点定位。`;
+            } finally { 
+                if(btn) btn.innerText = "解析地址"; 
+            }
         }
 
         async function calculateRoute() {
