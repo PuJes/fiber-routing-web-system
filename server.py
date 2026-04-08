@@ -122,6 +122,10 @@ def generate_markdown_report(data):
                     n1_clean = clean_name(n1)
                     n2_clean = clean_name(n2)
                     
+                    free = detail.get('空闲数量', '0')
+                    total = detail.get('中继纤芯数量', '0')
+                    dist = detail.get('长度', '0')
+                    
                     md += f"    N{idx}A[\"{FAP_ICON if idx==0 else ROOM_ICON} {n1_clean}\"] -- {free}core_{dist}m --> N{idx+1}A[\"{ROOM_ICON} {n2_clean}\"]\n"
                     if idx == 0: md += f"    class N{idx}A fap;\n"
                     else: md += f"    class N{idx}A room;\n"
@@ -166,6 +170,10 @@ def generate_markdown_report(data):
                     n1_clean = clean_name(n1)
                     n2_clean = clean_name(n2)
                     
+                    free = detail.get('空闲数量', '0')
+                    total = detail.get('中继纤芯数量', '0')
+                    dist = detail.get('长度', '0')
+                    
                     md += f"    N{idx}B[\"{FAP_ICON if idx==0 else ROOM_ICON} {n1_clean}\"] -- {free}core_{dist}m --> N{idx+1}B[\"{ROOM_ICON} {n2_clean}\"]\n"
                     if idx == 0: md += f"    class N{idx}B fap;\n"
                     else: md += f"    class N{idx}B room;\n"
@@ -182,36 +190,41 @@ def generate_markdown_report(data):
 
 @app.route('/api/plan', methods=['POST'])
 def plan():
-    data = request.json
-    lon = float(data['lon'])
-    lat = float(data['lat'])
-    is_gcj02 = data.get('is_gcj02', False)
-    
-    # 自动坐标系转换
-    if is_gcj02:
-        lon, lat = gcj02_to_wgs84(lon, lat)
+    try:
+        data = request.json
+        lon = float(data['lon'])
+        lat = float(data['lat'])
+        is_gcj02 = data.get('is_gcj02', False)
         
-    net_type = data.get('type', 'PTN')
-    
-    # 极速运算：只需 ~50ms，因为引擎在内存里！
-    raw_result = demo_v4.find_fap_to_equipment_route(geo_engine, route_engine, lon, lat, net_type)
-    
-    # 生成 Markdown
-    markdown_report = generate_markdown_report(raw_result)
-    
-    # 打印生成的 Mermaid 以便调试
-    import re
-    mermaids = re.findall(r'```mermaid\n(.*?)\n```', markdown_report, re.DOTALL)
-    for m in mermaids:
-        sys.stdout.write("DEBUG MERMAID START:\n")
-        sys.stdout.write(m + "\n")
-        sys.stdout.write("DEBUG MERMAID END\n")
-        sys.stdout.flush()
-    
-    return jsonify({
-        "raw_json": raw_result,
-        "markdown": markdown_report
-    })
+        # 自动坐标系转换
+        if is_gcj02:
+            lon, lat = gcj02_to_wgs84(lon, lat)
+            
+        net_type = data.get('type', 'PTN')
+        
+        # 极速运算：只需 ~50ms，因为引擎在内存里！
+        raw_result = demo_v4.find_fap_to_equipment_route(geo_engine, route_engine, lon, lat, net_type)
+        
+        # 生成 Markdown
+        markdown_report = generate_markdown_report(raw_result)
+        
+        # 打印生成的 Mermaid 以便调试
+        import re
+        mermaids = re.findall(r'```mermaid\n(.*?)\n```', markdown_report, re.DOTALL)
+        for m in mermaids:
+            sys.stdout.write("DEBUG MERMAID START:\n")
+            sys.stdout.write(m + "\n")
+            sys.stdout.write("DEBUG MERMAID END\n")
+            sys.stdout.flush()
+        
+        return jsonify({
+            "raw_json": raw_result,
+            "markdown": markdown_report
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     # 监听 0.0.0.0 允许外部访问
