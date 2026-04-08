@@ -304,7 +304,7 @@ class FiberRoutingEngine:
             return {"error": "无法找到通往汇聚机房的空闲路由路径"}
         return output_plans
 
-    def find_nearest_network_equipment(self, start_node, target_network_type, require_ts_room=False):
+    def find_multiple_network_equipment(self, start_node, target_network_type, require_ts_room=False, max_plans=3):
         start_node = start_node.strip()
         target_network_type = target_network_type.strip().upper()
         
@@ -312,60 +312,38 @@ class FiberRoutingEngine:
             return {"error": f"未在网络中找到起点 [{start_node}]"}
             
         queue = deque([(start_node, [start_node], [], 0, {start_node})])
-        
-        while queue:
+        found_plans = []
+        found_nodes = set() # 限制每个机房只出一个方案，或者根据路径排重
+
+        while queue and len(found_plans) < max_plans:
             curr_node, path_nodes, path_edges, jumps, visited = queue.popleft()
             
             if curr_node in self.node_equipments:
                 equip_dict = self.node_equipments[curr_node]
                 if target_network_type in equip_dict and len(equip_dict[target_network_type]) > 0:
                     
+                    is_target = True
                     if require_ts_room:
-                        # 如果需要是传输机房，必须包含关键词
                         if not ("传输" in curr_node or "汇聚" in curr_node or "核心" in curr_node):
-                            # 虽然有设备，但不是核心/传输机房，继续搜其他路径
-                            pass
-                        else:
-                            total_distance = 0.0
-                            for edge in path_edges:
-                                try: total_distance += float(edge['长度']) if edge['长度'] else 0.0
-                                except ValueError: pass
-                                
-                            if jumps == 0:
-                                routing_str = f"{start_node} (目标网元就在起点机房内，跳数为0)"
-                            else:
-                                routing_str = path_nodes[0]
-                                for node, edge_data in zip(path_nodes[1:], path_edges):
-                                    free_count = str(edge_data['空闲数量']).strip() or "0"
-                                    total_core = str(edge_data['中继纤芯数量']).strip() or "0"
-                                    routing_str += f"-({free_count}/{total_core})->{node}"
-                                    
-                            return {
-                                "status": "success",
-                                "target_network_type": target_network_type,
-                                "found_at_node": curr_node,
-                                "jumps": jumps,
-                                "distance_meters": round(total_distance, 2),
-                                "routing": routing_str,
-                                "equipments_found": equip_dict[target_network_type],
-                                "path_details": path_edges
-                            }
-                    else:
+                            is_target = False
+                    
+                    if is_target:
+                        # 生成路径详情
                         total_distance = 0.0
                         for edge in path_edges:
                             try: total_distance += float(edge['长度']) if edge['长度'] else 0.0
                             except ValueError: pass
                             
+                        routing_str = path_nodes[0]
                         if jumps == 0:
-                            routing_str = f"{start_node} (目标网元就在起点机房内，跳数为0)"
+                            routing_str += " (目标网元就在起点机房内，跳数为0)"
                         else:
-                            routing_str = path_nodes[0]
                             for node, edge_data in zip(path_nodes[1:], path_edges):
                                 free_count = str(edge_data['空闲数量']).strip() or "0"
                                 total_core = str(edge_data['中继纤芯数量']).strip() or "0"
                                 routing_str += f"-({free_count}/{total_core})->{node}"
-                                
-                        return {
+                        
+                        found_plans.append({
                             "status": "success",
                             "target_network_type": target_network_type,
                             "found_at_node": curr_node,
@@ -374,7 +352,25 @@ class FiberRoutingEngine:
                             "routing": routing_str,
                             "equipments_found": equip_dict[target_network_type],
                             "path_details": path_edges
-                        }
+                        })
+                        if len(found_plans) >= max_plans: break
+                        # 继续搜其他路径
+            
+            for edge in self.graph[curr_node]:
+                neighbor = edge['target']
+                e_data = edge['data']
+                if neighbor not in visited:
+                    new_visited = visited.copy()
+                    new_visited.add(neighbor)
+                    queue.append((
+                        neighbor,
+                        path_nodes + [neighbor],
+                        path_edges + [e_data],
+                        jumps + 1,
+                        new_visited
+                    ))
+        return found_plans if found_plans else {"error": "未找到方案"}
+
                     
             for edge in self.graph[curr_node]:
                 neighbor = edge['target']
@@ -458,18 +454,20 @@ def find_fap_to_equipment_route(geo_engine, route_engine, lon, lat, target_netwo
         fap_physical_location = fap["physical_loc"]
         fap_distance = fap["distance"]
         
-        # 1. 寻找绝对最近的设备
-        nearest_route_result = route_engine.find_nearest_network_equipment(
+        # 1. 寻找多套绝对最近的候选方案
+        nearest_route_results = route_engine.find_multiple_network_equipment(
             start_node=fap_physical_location, 
             target_network_type=target_network_type,
-            require_ts_room=False
+            require_ts_room=False,
+            max_plans=2
         )
         
-        # 2. 寻找最近的传输/汇聚机房设备
-        ts_room_route_result = route_engine.find_nearest_network_equipment(
+        # 2. 寻找多套最近的传输/汇聚机房候选方案
+        ts_room_route_results = route_engine.find_multiple_network_equipment(
             start_node=fap_physical_location, 
             target_network_type=target_network_type,
-            require_ts_room=True
+            require_ts_room=True,
+            max_plans=2
         )
         
         candidate_info = {
@@ -478,8 +476,8 @@ def find_fap_to_equipment_route(geo_engine, route_engine, lon, lat, target_netwo
             "fap_physical_location": fap_physical_location,
             "fap_grid": fap.get("grid", "未知"),
             "distance_to_query_point_meters": round(fap_distance, 2),
-            "equipment_routing_plan": nearest_route_result, # 为了兼容老版本字段，保持这个为绝对最近
-            "transmission_room_routing_plan": ts_room_route_result # 新增的传输机房最优方案
+            "equipment_routing_plans": nearest_route_results,
+            "transmission_room_routing_plans": ts_room_route_results
         }
         
         final_output["fap_to_equipment_candidates"].append(candidate_info)

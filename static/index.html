@@ -3,66 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>智能光纤前勘系统 3.0 | Vis Network 版</title>
+    <title>智能光纤前勘 4.0 | 多路径交互拓扑版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <!-- 引入 Vis-Network 开源拓扑插件 -->
     <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
     <style>
         .map-container { height: 300px; width: 100%; border-radius: 0.5rem; }
-        .network-container { height: 400px; width: 100%; border: 1px solid #e5e7eb; border-radius: 0.5rem; background: #f8fafc; margin-bottom: 1.5rem; position: relative; }
-        .markdown-body h2 { font-size: 1.5rem; font-weight: bold; border-bottom: 2px solid #e5e7eb; padding-bottom: 0.5rem; margin-top: 1.5rem; margin-bottom: 1rem; }
-        .markdown-body h3 { font-size: 1.25rem; font-weight: bold; margin-top: 1.5rem; margin-bottom: 0.5rem; }
-        .markdown-body table { width: 100%; border-collapse: collapse; margin-bottom: 1.5rem; font-size: 0.875rem; }
-        .markdown-body th, .markdown-body td { border: 1px solid #d1d5db; padding: 0.5rem; text-align: left; }
-        .markdown-body th { background-color: #f3f4f6; }
+        .network-container { height: 600px; width: 100%; border: 1px solid #cbd5e1; border-radius: 0.75rem; background: #ffffff; margin-top: 1rem; position: relative; }
+        .markdown-body h2 { font-size: 1.5rem; font-weight: bold; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.5rem; margin-top: 1.5rem; margin-bottom: 1rem; color: #1e293b; }
+        .markdown-body h3 { font-size: 1.25rem; font-weight: bold; margin-top: 1.25rem; margin-bottom: 0.5rem; color: #334155; }
+        .markdown-body ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1rem; }
     </style>
 </head>
-<body class="bg-gray-100 text-gray-900 font-sans min-h-screen flex flex-col">
-    <nav class="bg-indigo-700 text-white shadow-lg">
+<body class="bg-slate-50 text-slate-900 font-sans min-h-screen flex flex-col">
+    <nav class="bg-slate-800 text-white shadow-xl">
         <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-            <div class="flex items-center space-x-2">
+            <div class="flex items-center space-x-3">
                 <span class="text-3xl">🦞</span>
-                <span class="font-bold text-xl">智能光纤前勘 3.0</span>
-                <span class="text-xs bg-indigo-500 px-2 py-1 rounded">Vis-Network 拓扑增强版</span>
+                <span class="font-extrabold text-xl tracking-tight">智能光纤前勘系统 4.0</span>
+                <span class="text-[10px] bg-sky-500 px-2 py-0.5 rounded font-bold uppercase">Multi-Path Engine</span>
             </div>
         </div>
     </nav>
 
-    <main class="flex-grow max-w-7xl mx-auto px-4 py-6 w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
+    <main class="flex-grow max-w-[1600px] mx-auto px-4 py-6 w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
         <!-- 左侧面板 -->
-        <div class="lg:col-span-4 space-y-4">
-            <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
-                <h3 class="font-bold mb-3 flex items-center"><span class="mr-2">🔍</span>地址解析</h3>
+        <div class="lg:col-span-3 space-y-4">
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                <h3 class="font-bold mb-3 flex items-center text-slate-700">🔍 地址快速定位</h3>
                 <div class="flex space-x-2">
-                    <input type="text" id="addressInput" class="flex-1 border rounded-lg p-2 text-sm" placeholder="搜索大厦/园区...">
-                    <button onclick="searchAddress()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium">解析</button>
+                    <input type="text" id="addressInput" class="flex-1 border rounded-lg p-2 text-sm focus:ring-2 focus:ring-sky-500 outline-none" placeholder="大厦或园区名称">
+                    <button onclick="searchAddress()" class="bg-sky-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-sky-700">定位</button>
                 </div>
             </div>
 
-            <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
-                <h3 class="font-bold mb-3 flex items-center"><span class="mr-2">📍</span>坐标与网络</h3>
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                <h3 class="font-bold mb-3 flex items-center text-slate-700">📍 坐标与算路设置</h3>
                 <div class="grid grid-cols-2 gap-3 mb-4">
                     <input type="number" id="lonInput" step="0.000001" class="border rounded-lg p-2 text-sm" placeholder="经度">
                     <input type="number" id="latInput" step="0.000001" class="border rounded-lg p-2 text-sm" placeholder="纬度">
                 </div>
-                <select id="networkType" class="w-full border rounded-lg p-2 text-sm mb-4">
-                    <option value="PTN">PTN 网络</option>
-                    <option value="OTN">OTN 网络</option>
+                <div class="flex items-center mb-4 space-x-2 text-xs text-slate-500">
+                    <input type="checkbox" id="gcj02Toggle" class="w-4 h-4">
+                    <label for="gcj02Toggle" class="cursor-pointer">GCJ-02 (火星坐标) 纠偏</label>
+                </div>
+                <select id="networkType" class="w-full border rounded-lg p-2 text-sm mb-4 bg-slate-50">
+                    <option value="PTN">PTN 分组传送网</option>
+                    <option value="OTN">OTN 光传送网</option>
                 </select>
-                <button onclick="calculateRoute()" class="w-full bg-emerald-600 text-white py-3 rounded-lg font-bold hover:bg-emerald-700 shadow-md transition-all">🚀 启动算路</button>
+                <button onclick="calculateRoute()" class="w-full bg-emerald-600 text-white py-3 rounded-lg font-bold hover:bg-emerald-700 shadow-lg hover:shadow-emerald-200/50 transition-all">🚀 启动全路径前勘</button>
             </div>
 
-            <div id="map" class="map-container shadow-inner border border-gray-200"></div>
+            <div id="map" class="map-container rounded-xl border border-slate-200 shadow-sm"></div>
         </div>
 
         <!-- 右侧报告面板 -->
-        <div class="lg:col-span-8 bg-white p-6 rounded-xl shadow-sm border border-gray-200 overflow-y-auto">
-            <div id="reportContainer" class="markdown-body">
-                <div class="text-center py-20 text-gray-400">
-                    请在左侧设定目标点并启动算路
+        <div class="lg:col-span-9 bg-white p-6 rounded-xl shadow-sm border border-slate-200 overflow-y-auto min-h-[800px]">
+            <div id="reportContainer">
+                <div class="flex flex-col items-center justify-center h-[600px] text-slate-300">
+                    <span class="text-6xl mb-4">🗺️</span>
+                    <p class="text-xl font-medium">请设定目标点以生成多路径交互拓扑报告</p>
                 </div>
             </div>
         </div>
@@ -82,21 +84,21 @@
 
         async function searchAddress() {
             const addr = document.getElementById('addressInput').value;
+            if(!addr) return;
             const res = await fetch('/api/geocode', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({address:addr})});
             const data = await res.json();
             if(data.lon) {
                 document.getElementById('lonInput').value = data.lon;
                 document.getElementById('latInput').value = data.lat;
-                const pos = [data.lat, data.lon];
                 if(marker) map.removeLayer(marker);
-                marker = L.marker(pos).addTo(map);
-                map.setView(pos, 16);
+                marker = L.marker([data.lat, data.lon]).addTo(map);
+                map.setView([data.lat, data.lon], 16);
             }
         }
 
         async function calculateRoute() {
-            const reportBox = document.getElementById('reportContainer');
-            reportBox.innerHTML = '<div class="text-center py-20">正在计算双轨路由...</div>';
+            const container = document.getElementById('reportContainer');
+            container.innerHTML = '<div class="flex flex-col items-center justify-center h-[600px] text-slate-500"><div class="animate-spin rounded-full h-12 w-12 border-b-2 border-sky-600 mb-4"></div><p>正在执行路网寻踪并构建多路径拓扑...</p></div>';
             
             try {
                 const res = await fetch('/api/plan', {
@@ -105,109 +107,136 @@
                     body:JSON.stringify({
                         lon: document.getElementById('lonInput').value,
                         lat: document.getElementById('latInput').value,
+                        is_gcj02: document.getElementById('gcj02Toggle').checked,
                         type: document.getElementById('networkType').value
                     })
                 });
                 const result = await res.json();
                 renderReport(result);
             } catch(e) {
-                reportBox.innerHTML = `<div class="text-red-500">请求失败: ${e.message}</div>`;
+                container.innerHTML = `<div class="p-4 bg-red-50 text-red-600 rounded-lg">计算失败: ${e.message}</div>`;
             }
         }
 
         function renderReport(data) {
             const container = document.getElementById('reportContainer');
-            container.innerHTML = ""; // 清空
+            container.innerHTML = ""; 
 
             // 1. 概述
             const header = document.createElement('div');
-            header.className = "markdown-body";
-            header.innerHTML = marked.parse(data.markdown.split('---')[0]);
+            header.className = "markdown-body mb-8";
+            header.innerHTML = marked.parse(data.markdown);
             container.appendChild(header);
 
-            // 2. 循环处理每一个候选方案
+            // 2. 候选方案循环
             const candidates = data.raw_json.fap_to_equipment_candidates;
             candidates.forEach((cand, i) => {
-                const candDiv = document.createElement('div');
-                candDiv.className = "mt-8 p-4 border-l-4 border-indigo-500 bg-gray-50 rounded-r-lg";
-                candDiv.innerHTML = `<h2 class="text-xl font-bold text-indigo-800">方案 ${i+1}: ${cand.fap_name}</h2>
-                                     <p class="text-sm text-gray-600 mb-4">距离起点: ${cand.distance_to_query_point_meters} 米</p>`;
-                container.appendChild(candDiv);
-
-                // 渲染子方案 A 和 B
-                renderSubPlan(candDiv, cand.equipment_routing_plan, "🌟 子方案 A: 绝对最近接入");
-                renderSubPlan(candDiv, cand.transmission_room_routing_plan, "🛡️ 子方案 B: 高可靠传输机房接入");
+                const card = document.createElement('div');
+                card.className = "mb-12 p-6 bg-slate-50 rounded-2xl border border-slate-200 relative";
+                card.innerHTML = `
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-2xl font-black text-slate-800 m-0">方案 ${i+1}: ${cand.fap_name}</h2>
+                        <span class="bg-white px-3 py-1 rounded-full text-xs font-bold border border-slate-200 text-slate-500 shadow-sm">
+                            FAP 距离中心点: ${cand.distance_to_query_point_meters}m
+                        </span>
+                    </div>
+                    <div class="text-sm text-slate-500 mb-2 italic">提示：可自由拖动节点调整布局，连线长度可随拖拽拉伸。</div>
+                    <div class="network-container shadow-xl" id="net_combined_${i}"></div>
+                `;
+                container.appendChild(card);
+                renderCombinedNetwork(document.getElementById(`net_combined_${i}`), cand);
             });
         }
 
-        function renderSubPlan(parent, plan, title) {
-            if(!plan || plan.status !== 'success') return;
-
-            const div = document.createElement('div');
-            div.className = "mt-6";
-            div.innerHTML = `<h3 class="font-bold text-lg mb-2">${title}</h3>
-                             <ul class="text-sm mb-4 space-y-1">
-                                <li>• <b>跳数</b>: ${plan.jumps}</li>
-                                <li>• <b>总距离</b>: ${plan.distance_meters} 米</li>
-                                <li>• <b>终点</b>: ${plan.found_at_node}</li>
-                             </ul>
-                             <div class="network-container" id="net_${Math.random().toString(36).substr(2,9)}"></div>`;
-            parent.appendChild(div);
-
-            const netContainer = div.querySelector('.network-container');
-            
-            // 构建 Vis Network 数据
+        function renderCombinedNetwork(container, cand) {
             const nodes = [];
             const edges = [];
-            
-            if(plan.jumps === 0) {
-                nodes.push({id: 1, label: '🔌 起点/机房直连', shape: 'box', color: '#e1f5fe', font: {size: 14}});
-            } else {
-                // 简单的从路由字符串解析
-                const parts = plan.routing.split('->');
-                parts.forEach((p, idx) => {
-                    const nodeName = p.split(')-').pop() || p;
+            const nodeIds = new Set();
+
+            function clean(s) { return String(s).replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, ''); }
+
+            function addNode(name, type, isEnd = false) {
+                const id = clean(name);
+                if (!nodeIds.has(id)) {
+                    let color = '#f1f5f9';
+                    let border = '#94a3b8';
+                    let label = name;
+                    
+                    if (type === 'fap') { color = '#eff6ff'; border = '#2563eb'; label = "🔌 " + name; }
+                    else if (isEnd) { color = '#ecfdf5'; border = '#059669'; label = "🏁 " + name; }
+                    else { color = '#f8fafc'; border = '#64748b'; label = "🏠 " + name; }
+
                     nodes.push({
-                        id: idx, 
-                        label: (idx === 0 ? "🔌 " : "🏠 ") + nodeName, 
-                        shape: 'dot',
-                        size: 20,
-                        color: idx === 0 ? '#3b82f6' : (idx === parts.length - 1 ? '#10b981' : '#94a3b8')
+                        id: id,
+                        label: label,
+                        shape: 'box',
+                        margin: 10,
+                        font: { size: 13, face: 'Inter', color: '#334155' },
+                        color: { background: color, border: border, highlight: { background: color, border: border } },
+                        borderWidth: 2,
+                        shadow: { enabled: true, color: 'rgba(0,0,0,0.05)', size: 5, x: 2, y: 2 }
                     });
-                    if(idx > 0) {
-                        edges.push({
-                            from: idx - 1, 
-                            to: idx, 
-                            label: '光缆', 
-                            arrows: 'to', 
-                            color: {color:'#10b981', highlight:'#059669'},
-                            width: 3
-                        });
-                    }
-                });
+                    nodeIds.add(id);
+                }
+                return id;
             }
 
-            new vis.Network(netContainer, {nodes, edges}, {
-                nodes: { font: { face: 'Inter' } },
-                edges: { font: { align: 'top' } },
-                physics: { 
-                    enabled: false, // 禁用物理引擎，防止拖拽时群魔乱舞
-                    stabilization: true 
-                },
-                layout: {
-                    hierarchical: {
-                        enabled: true,
-                        direction: 'LR', // 从左到右排列
-                        sortMethod: 'directed',
-                        levelSeparation: 200,
-                        nodeSpacing: 150
+            // 处理所有 A 和 B 方案
+            const plans = [...(cand.equipment_routing_plans || []), ...(cand.transmission_room_routing_plans || [])];
+            
+            plans.forEach((plan, pIdx) => {
+                if(!plan || plan.status !== 'success') return;
+                const pathParts = plan.routing.split('->');
+                
+                pathParts.forEach((p, idx) => {
+                    const name = p.split(')-').pop() || p;
+                    const isFap = (idx === 0);
+                    const isEnd = (idx === pathParts.length - 1);
+                    const nodeId = addNode(name, isFap ? 'fap' : 'mid', isEnd);
+
+                    if (idx > 0) {
+                        const prevName = pathParts[idx-1].split(')-').pop() || pathParts[idx-1];
+                        const prevId = clean(prevName);
+                        
+                        // 连线信息提取
+                        const edgeInfo = plan.path_details[idx-1];
+                        const label = `${edgeInfo.空闲数量}/${edgeInfo.中继纤芯数量}\n${edgeInfo.长度}m`;
+                        
+                        // 连线重复性检查
+                        const edgeExists = edges.some(e => e.from === prevId && e.to === nodeId);
+                        if (!edgeExists) {
+                            edges.push({
+                                from: prevId,
+                                to: nodeId,
+                                label: label,
+                                font: { size: 10, align: 'middle', color: '#059669' },
+                                arrows: 'to',
+                                color: { color: '#10b981', opacity: 0.6 },
+                                width: 2,
+                                length: 250, // 初始长度
+                                smooth: { type: 'curvedCW', roundness: 0.2 }
+                            });
+                        }
                     }
+                });
+            });
+
+            new vis.Network(container, { nodes, edges }, {
+                physics: { 
+                    enabled: true, 
+                    solver: 'repulsion',
+                    repulsion: { nodeDistance: 200, centralGravity: 0.1, springLength: 200, damping: 0.4 },
+                    stabilization: { iterations: 100 }
                 },
-                interaction: {
-                    dragNodes: true,
-                    dragView: true,
-                    zoomView: true
-                }
+                interaction: { dragNodes: true, dragView: true, zoomView: true, hover: true }
+            });
+            
+            // 关键：稳定后禁用物理引擎，实现“自由拉伸”且不回弹
+            const network = new vis.Network(container, { nodes, edges }, {
+                physics: { enabled: true, stabilization: { iterations: 200 } }
+            });
+            network.on("stabilizationIterationsDone", function () {
+                network.setOptions({ physics: false });
             });
         }
     </script>
