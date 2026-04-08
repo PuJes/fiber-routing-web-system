@@ -38,31 +38,43 @@ def gcj02_to_wgs84(lng, lat):
     return [lng * 2 - mglng, lat * 2 - mglat]
 
 # ==========================================
-# 核心逻辑 B：路网引擎初始化 (跨平台自适应)
+# 核心逻辑 B：路网引擎初始化 (极致路径兼容)
 # ==========================================
-# 获取当前程序实际运行的目录（打包后为临时目录，开发时为代码目录）
+# 获取程序真实运行路径
 if getattr(sys, 'frozen', False):
-    current_runtime_dir = sys._MEIPASS
+    # 打包环境：EXE 所在的实际物理文件夹
+    base_path = os.path.dirname(sys.executable)
 else:
-    current_runtime_dir = os.path.dirname(os.path.abspath(__file__))
+    # 开发环境：代码所在的文件夹
+    base_path = os.path.dirname(os.path.abspath(__file__))
 
-# 优先查找特定的本地绝对路径，如果不存在（比如在别人的 Windows 上），则切换到当前程序所在的目录
-data_root = '/Users/jesspu/Downloads/前勘脚本打包'
-if not os.path.exists(data_root):
-    data_root = current_runtime_dir
+# 搜索数据源的优先级：1. 程序旁边 2. 原始 Downloads 路径
+data_root = base_path
+possible_data_paths = [base_path, '/Users/jesspu/Downloads/前勘脚本打包']
 
+for p in possible_data_paths:
+    test_file = os.path.join(p, "7级AOI（末端网格）0204.csv")
+    if os.path.exists(test_file):
+        data_root = p
+        break
+
+print(f"📡 探测到数据源目录: {data_root}")
 os.chdir(data_root)
 sys.path.append(data_root)
 
 import demo_v4
 # 全局挂载引擎
-print(f"⏳ 正在初始化全局路网数据库 (数据路径: {data_root})...")
+print("⏳ 正在挂载空间路网数据库到内存...")
 G_ENGINE = demo_v4.GeoSpatialEngine("7级AOI（末端网格）0204.csv", "合规的FAP设施点0202.csv")
 R_ENGINE = demo_v4.FiberRoutingEngine(["中继段-1.CSV", "中继段-2.CSV"], ["传输网元查询-2026-02-10-1770716023730_1.csv", "传输网元查询-2026-02-10-1770716023730_2.csv"])
 print("✅ 路网数据库已就绪。")
 
-# 兼容打包后的静态资源路径
-static_folder = os.path.join(current_runtime_dir, 'static')
+# 兼容静态资源
+if getattr(sys, 'frozen', False):
+    static_folder = os.path.join(sys._MEIPASS, 'static')
+else:
+    static_folder = os.path.join(base_path, 'static')
+
 app = Flask(__name__, static_folder=static_folder, static_url_path='')
 
 @app.route('/')
