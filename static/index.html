@@ -320,10 +320,11 @@
                         const prevId = cleanId(prevRaw);
                         if (!edges.some(e => e.from === prevId && e.to === nodeId)) {
                             const info = plan.path_details[idx-1];
+                            const cableName = info.名称 || info.关联光缆段 || '未知光缆';
                             edges.push({
                                 from: prevId, to: nodeId, 
-                                label: `${info.空闲数量}芯/${info.长度}m`,
-                                font: { size: 10, align: 'middle', background: 'white' },
+                                label: `${cableName}\n(${info.空闲数量}芯/${info.长度}m)`,
+                                font: { size: 9, align: 'middle', background: 'rgba(255,255,255,0.8)', color: '#047857' },
                                 arrows: 'to', color: '#10b981', width: 3, smooth: false
                             });
                         }
