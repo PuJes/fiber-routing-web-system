@@ -158,10 +158,11 @@
             }
 
             function addNode(name, type, isEnd = false) {
-                // 彻底清洗名称，移除任何可能的后缀干扰，确保唯一性
-                let displayName = name.split(')-').pop() || name;
-                displayName = displayName.split(' (目标网元')[0].trim();
-                const id = cleanId(displayName);
+                // 彻底清洗逻辑：移除括号内的所有内容（通常是动态纤芯数），移除前后空格
+                let cleanName = name.replace(/\(.*\)/g, '').split(')-').pop().trim();
+                cleanName = cleanName.split(' (目标网元')[0].trim();
+                
+                const id = cleanId(cleanName);
 
                 if (!nodeIds.has(id)) {
                     let color = '#94a3b8'; // 中间节点：灰色
@@ -177,7 +178,7 @@
 
                     nodes.push({
                         id: id,
-                        label: displayName, // 使用清洗后的名称作为标注
+                        label: cleanName, // 使用清洗后的纯净名称显示
                         shape: 'dot',
                         size: 15,
                         font: { 
@@ -211,10 +212,13 @@
                     const nodeId = addNode(p, isFap ? 'fap' : 'mid', isEnd);
 
                     if (idx > 0) {
-                        const prevNodeId = cleanId((pathParts[idx-1].split(')-').pop() || pathParts[idx-1]).split(' (目标网元')[0]);
+                        // 同样清洗前置节点的 ID，确保连线准确指向唯一的圆点
+                        let prevRawName = pathParts[idx-1].replace(/\(.*\)/g, '').split(')-').pop().trim();
+                        prevRawName = prevRawName.split(' (目标网元')[0].trim();
+                        const prevNodeId = cleanId(prevRawName);
                         
                         const edgeInfo = plan.path_details[idx-1];
-                        const label = `${edgeInfo.空闲数量}/${edgeInfo.中继纤芯数量}\n${edgeInfo.长度}m`;
+                        const label = `${edgeInfo.空闲数量}/${edgeInfo.with_core or edgeInfo.中继纤芯数量 or '?'}\n${edgeInfo.长度}m`;
                         
                         const edgeExists = edges.some(e => e.from === prevNodeId && e.to === nodeId);
                         if (!edgeExists) {
