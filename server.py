@@ -21,7 +21,7 @@ def transformlng(lng, lat):
     ret = 300.0 + lng + 2.0 * lat + 0.1 * lng * lng + 0.1 * lng * lat + 0.1 * math.sqrt(math.fabs(lng))
     ret += (20.0 * math.sin(6.0 * lng * math.pi) + 20.0 * math.sin(2.0 * lng * math.pi)) * 2.0 / 3.0
     ret += (20.0 * math.sin(lng * math.pi) + 40.0 * math.sin(lng / 3.0 * math.pi)) * 2.0 / 3.0
-    ret += (150.0 * math.sin(lat / 12.0 * math.pi) + 300.0 * math.sin(lng / 30.0 * math.pi)) * 2.0 / 3.0
+    ret += (150.0 * math.sin(lng / 12.0 * math.pi) + 300.0 * math.sin(lng / 30.0 * math.pi)) * 2.0 / 3.0
     return ret
 
 def gcj02_to_wgs84(lng, lat):
@@ -38,7 +38,7 @@ def gcj02_to_wgs84(lng, lat):
     return [lng * 2 - mglng, lat * 2 - mglat]
 
 # ==========================================
-# 核心逻辑 B：路网引擎初始化
+# 核心逻辑 B：路网引擎初始化 (单例模式)
 # ==========================================
 os.chdir('/Users/jesspu/Downloads/前勘脚本打包')
 sys.path.append('/Users/jesspu/Downloads/前勘脚本打包')
@@ -56,51 +56,50 @@ def index():
     return app.send_static_file('index.html')
 
 # ==========================================
-# 核心逻辑 C：地址解析 (高德 Web 搜索 + Nominatim 双引擎)
+# 核心逻辑 C：地址解析 (高德官方 API 引擎)
 # ==========================================
+AMAP_KEY = "5903c4fb3c71de0a925bed908ba5d8c1"
+
 @app.route('/api/geocode', methods=['POST'])
 def geocode():
     address = request.json.get('address')
     
-    # 模拟 WebAccess 的核心逻辑：带语义前缀搜索
+    # 模拟 WebAccess 语义补全
     search_query = address
     if not any(city in address for city in ["深圳", "东莞", "惠州"]):
         search_query = "深圳市" + address
         
-    # 第一阶段：尝试使用 AMap 的 Web API 获取更精准的国内地址（GCJ-02）
-    # 这里的逻辑是软件化后接入正式 API 的占位，当前先用 Nominatim 的多重补全逻辑模拟
+    # 调用高德地理编码接口 (GCJ-02)
+    url = f"https://restapi.amap.com/v3/geocode/geo?key={AMAP_KEY}&address={urllib.parse.quote(search_query)}&city=深莞惠"
     
-    # 逻辑：优先尝试精确地址，增加超时控制
-    urls = [
-        # 原生查询
-        "https://nominatim.openstreetmap.org/search?q=" + urllib.parse.quote(address) + "&format=json&limit=1&addressdetails=1",
-        # 补全查询
-        "https://nominatim.openstreetmap.org/search?q=" + urllib.parse.quote(search_query) + "&format=json&limit=1&addressdetails=1"
-    ]
-    
-    for url in urls:
-        req = urllib.request.Request(url, headers={'User-Agent': 'FiberRoutingPRO/5.25'})
-        try:
-            with urllib.request.urlopen(req, timeout=5) as response:
-                data = json.loads(response.read().decode())
-                if data:
-                    return jsonify({
-                        "lon": float(data[0]['lon']),
-                        "lat": float(data[0]['lat']),
-                        "display_name": data[0]['display_name'],
-                        "source": "WGS84"
-                    })
-        except Exception:
-            continue
-
-    return jsonify({"error": "地址定位较慢，建议在地图上点击定位"}), 404
+    try:
+        req = urllib.request.Request(url)
+        with urllib.request.urlopen(req, timeout=5) as response:
+            data = json.loads(response.read().decode())
+            if data['status'] == '1' and data['geocodes']:
+                loc = data['geocodes'][0]['location'].split(',')
+                lon_gcj, lat_gcj = float(loc[0]), float(loc[1])
+                
+                # 高德返回的是 GCJ-02，在此处直接转换为 WGS84 方便后续算法
+                lon_wgs, lat_wgs = gcj02_to_wgs84(lon_gcj, lat_gcj)
+                
+                return jsonify({
+                    "lon": lon_wgs,
+                    "lat": lat_wgs,
+                    "display_name": data['geocodes'][0]['formatted_address'],
+                    "source": "AMap-GCJ02-To-WGS84"
+                })
+            else:
+                return jsonify({"error": "高德地图未找到该地址"}), 404
+    except Exception as e:
+        return jsonify({"error": f"高德接口异常: {str(e)}"}), 500
 
 # ==========================================
-# 核心逻辑 D：研报生成模块
+# 核心逻辑 D：研报生成模块 (手写 HTML 表格渲染)
 # ==========================================
 def generate_markdown_report(data):
     SEP = "---"
-    md = f"## 📝 勘查全局概述\n\n"
+    md = f"## 📝 1. 勘查全局概述\n\n"
     md += f"- **目标坐标**：`{data['query_coordinates']['lon']}, {data['query_coordinates']['lat']}`\n"
     aois = data.get('matched_aoi_geofence', [])
     md += f"- **命中网格**：`{' | '.join(aois) if aois else '未命中特定园区'}`\n"
@@ -116,7 +115,7 @@ def generate_markdown_report(data):
             res = ""
             if isinstance(plans, list):
                 for j, p in enumerate(plans):
-                    res += f"#### {title_label}-{j+1}\n\n"
+                    res += f"\n#### {title_label}-{j+1}\n\n"
                     res += f"- **链路详情**：{p['jumps']}跳 | {p['distance_meters']}米 | 终点: {p['found_at_node']}\n\n"
                     res += "**📡 目标设备清单**：\n\n"
                     res += "| 网元名称 | 生命周期状态 |\n"
@@ -141,7 +140,7 @@ def plan():
     try:
         data = request.json
         lon, lat = float(data['lon']), float(data['lat'])
-        # 如果不是明确的 WGS84，执行高德纠偏
+        # 默认执行高德纠偏
         if not data.get('is_wgs84', False):
             lon, lat = gcj02_to_wgs84(lon, lat)
             
