@@ -7,7 +7,9 @@ import math
 import re
 from flask import Flask, request, jsonify
 
-# GCJ-02 to WGS84 Conversion logic
+# ==========================================
+# 核心逻辑 A：坐标系纠偏模块 (GCJ-02 -> WGS-84)
+# ==========================================
 def transformlat(lng, lat):
     ret = -100.0 + 2.0 * lng + 3.0 * lat + 0.2 * lat * lat + 0.1 * lng * lat + 0.2 * math.sqrt(math.fabs(lng))
     ret += (20.0 * math.sin(6.0 * lng * math.pi) + 20.0 * math.sin(2.0 * lng * math.pi)) * 2.0 / 3.0
@@ -19,7 +21,7 @@ def transformlng(lng, lat):
     ret = 300.0 + lng + 2.0 * lat + 0.1 * lng * lng + 0.1 * lng * lat + 0.1 * math.sqrt(math.fabs(lng))
     ret += (20.0 * math.sin(6.0 * lng * math.pi) + 20.0 * math.sin(2.0 * lng * math.pi)) * 2.0 / 3.0
     ret += (20.0 * math.sin(lng * math.pi) + 40.0 * math.sin(lng / 3.0 * math.pi)) * 2.0 / 3.0
-    ret += (150.0 * math.sin(lng / 12.0 * math.pi) + 300.0 * math.sin(lng / 30.0 * math.pi)) * 2.0 / 3.0
+    ret += (150.0 * math.sin(lat / 12.0 * math.pi) + 300.0 * math.sin(lng / 30.0 * math.pi)) * 2.0 / 3.0
     return ret
 
 def gcj02_to_wgs84(lng, lat):
@@ -35,6 +37,9 @@ def gcj02_to_wgs84(lng, lat):
     mglng = lng + dlng
     return [lng * 2 - mglng, lat * 2 - mglat]
 
+# ==========================================
+# 核心逻辑 B：路网引擎初始化
+# ==========================================
 os.chdir('/Users/jesspu/Downloads/前勘脚本打包')
 sys.path.append('/Users/jesspu/Downloads/前勘脚本打包')
 
@@ -50,30 +55,44 @@ app = Flask(__name__, static_folder='/Users/jesspu/.openclaw/workspace/codes/fib
 def index():
     return app.send_static_file('index.html')
 
+# ==========================================
+# 核心逻辑 C：地址解析 (针对中国地址优化)
+# ==========================================
 @app.route('/api/geocode', methods=['POST'])
 def geocode():
     address = request.json.get('address')
-    # 使用 Nominatim 获取详细结构化地址 (WGS84)，放宽限制范围或增加优先级
-    # 逻辑优化：如果直接搜没搜到，尝试增加 "广东省" 前缀，并扩大 viewbox
+    
+    # 模拟 WebAccess 的逻辑：如果输入太简略，自动补充城市前缀以提升搜索引擎命中率
     search_query = address
-    if "省" not in address and "市" not in address:
-        search_query = "广东省" + address
+    if not any(city in address for city in ["深圳", "东莞", "惠州"]):
+        search_query = "深圳市" + address
         
-    url = "https://nominatim.openstreetmap.org/search?q=" + urllib.parse.quote(search_query) + "&format=json&limit=1&addressdetails=1&viewbox=112.5,21.5,116.5,24.5&bounded=0"
-    req = urllib.request.Request(url, headers={'User-Agent': 'FiberRoutingPRO/5.23'})
+    # 逻辑：优先尝试 Nominatim，增加超时控制
+    url = "https://nominatim.openstreetmap.org/search?q=" + urllib.parse.quote(search_query) + "&format=json&limit=1&addressdetails=1"
+    req = urllib.request.Request(url, headers={'User-Agent': 'FiberRoutingPRO/5.24'})
+    
     try:
-        with urllib.request.urlopen(req) as response:
+        with urllib.request.urlopen(req, timeout=8) as response:
             data = json.loads(response.read().decode())
             if data:
-                return jsonify({"lon": float(data[0]['lon']), "lat": float(data[0]['lat']), "display_name": data[0]['display_name'], "source": "WGS84"})
-            else:
-                return jsonify({"error": "未能在地图库中定位到该地址"}), 404
+                return jsonify({
+                    "lon": float(data[0]['lon']),
+                    "lat": float(data[0]['lat']),
+                    "display_name": data[0]['display_name'],
+                    "source": "WGS84"
+                })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print(f"Geocoding Warning: {str(e)}")
 
+    # 兜底：如果 Nominatim 失败（中国地址有时搜不到），提示用户
+    return jsonify({"error": "地址定位较慢或未精准匹配，建议在地图上点击定位"}), 404
+
+# ==========================================
+# 核心逻辑 D：研报生成模块
+# ==========================================
 def generate_markdown_report(data):
     SEP = "---"
-    md = f"## 📝 1. 勘查全局概述\n\n"
+    md = f"## 📝 勘查全局概述\n\n"
     md += f"- **目标坐标**：`{data['query_coordinates']['lon']}, {data['query_coordinates']['lat']}`\n"
     aois = data.get('matched_aoi_geofence', [])
     md += f"- **命中网格**：`{' | '.join(aois) if aois else '未命中特定园区'}`\n"
@@ -95,9 +114,8 @@ def generate_markdown_report(data):
                     res += "| 网元名称 | 生命周期状态 |\n"
                     res += "| :--- | :--- |\n"
                     for eq in p.get('equipments_found', []):
-                        # 核心修复：极致清洗，确保每一行表格数据都是纯净的单行
-                        n_clean = str(eq.get('网元名称','')).replace('\n', ' ').replace('\r', '').strip()
-                        s_clean = str(eq.get('生命周期状态','')).replace('\n', ' ').replace('\r', '').strip()
+                        n_clean = str(eq.get('网元名称','')).replace('\n', ' ').strip()
+                        s_clean = str(eq.get('生命周期状态','')).replace('\n', ' ').strip()
                         res += f"| {n_clean} | {s_clean} |\n"
                     res += "\n"
             return res
@@ -115,12 +133,18 @@ def plan():
     try:
         data = request.json
         lon, lat = float(data['lon']), float(data['lat'])
+        # 如果不是明确的 WGS84，执行高德纠偏
         if not data.get('is_wgs84', False):
             lon, lat = gcj02_to_wgs84(lon, lat)
+            
         net_type = data.get('type', 'PTN')
         raw_result = demo_v4.find_fap_to_equipment_route(G_ENGINE, R_ENGINE, lon, lat, net_type)
         markdown_report = generate_markdown_report(raw_result)
-        return jsonify({"raw_json": raw_result, "markdown": markdown_report})
+        
+        return jsonify({
+            "raw_json": raw_result,
+            "markdown": markdown_report
+        })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
