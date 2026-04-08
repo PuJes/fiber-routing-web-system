@@ -53,7 +53,8 @@ def index():
 @app.route('/api/geocode', methods=['POST'])
 def geocode():
     address = request.json.get('address')
-    url = "https://nominatim.openstreetmap.org/search?q=" + urllib.parse.quote(address) + "&format=json&limit=1&addressdetails=1&viewbox=113.7,22.4,114.6,22.9&bounded=1"
+    # 使用 Nominatim 获取详细结构化地址 (WGS84)，限制在深莞惠范围以提速 (viewbox: 113.5,22.3,115.0,23.3)
+    url = "https://nominatim.openstreetmap.org/search?q=" + urllib.parse.quote(address) + "&format=json&limit=1&addressdetails=1&viewbox=113.5,22.3,115.0,23.3&bounded=1"
     req = urllib.request.Request(url, headers={'User-Agent': 'FiberRoutingPRO/5.17'})
     try:
         with urllib.request.urlopen(req) as response:
