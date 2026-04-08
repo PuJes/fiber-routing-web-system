@@ -113,7 +113,14 @@ def plan():
             lon, lat = gcj02_to_wgs84(lon, lat)
             
         net_type = data.get('type', 'PTN')
-        raw_result = demo_v4.find_fap_to_equipment_route(geo_engine, route_engine, lon, lat, net_type)
+        
+        import importlib
+        importlib.reload(demo_v4)
+        # 重新初始化引擎（因为 demo_v4 代码变了）
+        g_engine = demo_v4.GeoSpatialEngine("7级AOI（末端网格）0204.csv", "合规的FAP设施点0202.csv")
+        r_engine = demo_v4.FiberRoutingEngine(["中继段-1.CSV", "中继段-2.CSV"], ["传输网元查询-2026-02-10-1770716023730_1.csv", "传输网元查询-2026-02-10-1770716023730_2.csv"])
+        
+        raw_result = demo_v4.find_fap_to_equipment_route(g_engine, r_engine, lon, lat, net_type)
         markdown_report = generate_markdown_report(raw_result)
         
         return jsonify({
