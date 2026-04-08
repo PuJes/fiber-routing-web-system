@@ -210,17 +210,29 @@
         function renderReport(data) {
             const container = document.getElementById('reportContainer');
             container.innerHTML = ""; 
+            
+            // 修正：更精确的方案拆分逻辑，防止文字丢失
+            const reportParts = data.markdown.split('---');
+            
+            // 1. 渲染全局概述
             const header = document.createElement('div');
-            header.className = "markdown-body";
-            header.innerHTML = marked.parse(data.markdown.split('---')[0]);
+            header.className = "markdown-body mb-8";
+            header.innerHTML = marked.parse(reportParts[0]);
             container.appendChild(header);
 
-            data.raw_json.fap_to_equipment_candidates.forEach((cand, i) => {
+            // 2. 循环处理每一个候选方案
+            const candidates = data.raw_json.fap_to_equipment_candidates;
+            candidates.forEach((cand, i) => {
                 const card = document.createElement('div');
                 card.className = "plan-card";
-                card.innerHTML = `<h2>方案 ${i+1}: ${cand.fap_name}</h2>
-                                  <div class="network-container" id="net_combined_${i}"></div>
-                                  <div class="markdown-body">${marked.parse(data.markdown.split('---')[i+1] || "")}</div>`;
+                
+                // 确保即使 Markdown 拆分逻辑有问题，也能显示基本的方案标题
+                let planMarkdown = reportParts[i + 1] || "无法加载该方案的详细文字说明，请检查数据。";
+                
+                card.innerHTML = `
+                    <div class="network-container shadow-xl" id="net_combined_${i}"></div>
+                    <div class="markdown-body mt-8">${marked.parse(planMarkdown)}</div>
+                `;
                 container.appendChild(card);
                 renderCombinedNetwork(document.getElementById(`net_combined_${i}`), cand);
             });
