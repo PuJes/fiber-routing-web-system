@@ -118,6 +118,10 @@ def generate_markdown_report(data):
                         n1 = n1.replace(char, ' ')
                         n2 = n2.replace(char, ' ')
                     
+                    free = detail.get('空闲数量', '0')
+                    total = detail.get('中继纤芯数量', '0')
+                    dist = detail.get('长度', '0')
+                    
                     md += f"    N{idx}A[\"{FAP_ICON if idx==0 else ROOM_ICON} {n1.strip()}\"] -- {free}芯_{dist}m --> N{idx+1}A[\"{ROOM_ICON} {n2.strip()}\"]\n"
                     if idx == 0: md += f"    class N{idx}A fap;\n"
                     else: md += f"    class N{idx}A room;\n"
@@ -157,6 +161,10 @@ def generate_markdown_report(data):
                         n1 = n1.replace(char, ' ')
                         n2 = n2.replace(char, ' ')
                     
+                    free = detail.get('空闲数量', '0')
+                    total = detail.get('中继纤芯数量', '0')
+                    dist = detail.get('长度', '0')
+                    
                     md += f"    N{idx}B[\"{FAP_ICON if idx==0 else ROOM_ICON} {n1.strip()}\"] -- {free}芯_{dist}m --> N{idx+1}B[\"{ROOM_ICON} {n2.strip()}\"]\n"
                     if idx == 0: md += f"    class N{idx}B fap;\n"
                     else: md += f"    class N{idx}B room;\n"
@@ -189,6 +197,15 @@ def plan():
     
     # 生成 Markdown
     markdown_report = generate_markdown_report(raw_result)
+    
+    # 打印生成的 Mermaid 以便调试
+    import re
+    mermaids = re.findall(r'```mermaid\n(.*?)\n```', markdown_report, re.DOTALL)
+    for m in mermaids:
+        sys.stdout.write("DEBUG MERMAID START:\n")
+        sys.stdout.write(m + "\n")
+        sys.stdout.write("DEBUG MERMAID END\n")
+        sys.stdout.flush()
     
     return jsonify({
         "raw_json": raw_result,
