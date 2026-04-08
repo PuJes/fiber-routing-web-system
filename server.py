@@ -70,7 +70,13 @@ def geocode():
         search_query = "深圳市" + address
         
     # 调用高德地理编码接口 (GCJ-02)
-    url = f"https://restapi.amap.com/v3/geocode/geo?key={AMAP_KEY}&address={urllib.parse.quote(search_query)}&city=深莞惠"
+    # 修正：使用更安全的 URL 拼接方式，防止中文编码导致的 'ascii' 错误
+    params = {
+        'key': AMAP_KEY,
+        'address': search_query,
+        'city': '深莞惠'
+    }
+    url = f"https://restapi.amap.com/v3/geocode/geo?{urllib.parse.urlencode(params)}"
     
     try:
         req = urllib.request.Request(url)
