@@ -342,10 +342,11 @@
                         if (!edges.some(e => e.from === prevId && e.to === nodeId)) {
                             const info = plan.path_details[idx-1];
                             const cableName = info.名称 || info.关联光缆段 || '未知光缆';
+                            const bizStatus = info.业务状态 || '未知';
                             edges.push({
                                 from: prevId, to: nodeId, 
-                                label: `${cableName}\n(${info.空闲数量}芯/${info.长度}m)`,
-                                font: { size: 9, align: 'middle', background: 'rgba(255,255,255,0.8)', color: '#047857' },
+                                label: `${cableName}\n[${info.空闲数量}/${info.中继纤芯数量}芯 | ${bizStatus}]\n${info.长度}m`,
+                                font: { size: 9, align: 'middle', background: 'rgba(255,255,255,0.9)', color: '#047857' },
                                 arrows: 'to', color: '#10b981', width: 3, smooth: false
                             });
                         }
@@ -353,11 +354,42 @@
                 });
             });
 
-            const network = new vis.Network(container, { nodes, edges }, {
+            const options = {
                 physics: { enabled: true, stabilization: { iterations: 200 } },
-                interaction: { dragNodes: true, dragView: true, zoomView: true, hover: true }
+                interaction: { dragNodes: true, dragView: true, zoomView: true, hover: true, selectable: true },
+                layout: {
+                    hierarchical: {
+                        enabled: true,
+                        direction: 'LR',
+                        sortMethod: 'directed',
+                        levelSeparation: 300,
+                        nodeSpacing: 150
+                    }
+                }
+            };
+
+            const network = new vis.Network(container, { nodes, edges }, options);
+            
+            // 解决“可复制”问题：点击节点自动复制名称
+            network.on("click", function (params) {
+                if (params.nodes.length > 0) {
+                    const nodeId = params.nodes[0];
+                    const nodeData = nodes.find(n => n.id === nodeId);
+                    if (nodeData) {
+                        navigator.clipboard.writeText(nodeData.label).then(() => {
+                            // 可选：添加一个简单的提示
+                            alert("已复制机房名称: " + nodeData.label);
+                        });
+                    }
+                }
             });
-            network.on("stabilizationIterationsDone", () => network.setOptions({ physics: false }));
+
+            network.on("stabilizationIterationsDone", () => {
+                network.setOptions({ 
+                    layout: { hierarchical: false },
+                    physics: { enabled: false } 
+                });
+            });
         }
     </script>
 </body>
