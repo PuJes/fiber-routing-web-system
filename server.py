@@ -85,9 +85,10 @@ def generate_markdown_report(data):
             if isinstance(plans, list):
                 for j, p in enumerate(plans):
                     res += f"#### {title_label}-{j+1}\n"
-                    res += f"- **链路详情**：{p['jumps']}跳 | {p['distance_meters']}米 | 终点: {p['found_at_node']}\n"
-                    res += "  - **📡 目标设备清单**：\n"
-                    res += "    | 网元名称 | 生命周期状态 |\n    | :--- | :--- |\n"
+                    res += f"- **链路详情**：{p['jumps']}跳 | {p['distance_meters']}米 | 终点: {p['found_at_node']}\n\n"
+                    res += "  - **📡 目标设备清单**：\n\n"
+                    res += "    | 网元名称 | 生命周期状态 |\n"
+                    res += "    | :--- | :--- |\n"
                     for eq in p.get('equipments_found', []):
                         res += f"    | `{eq.get('网元名称','')}` | {eq.get('生命周期状态','')} |\n"
                     res += "\n"
