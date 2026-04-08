@@ -4,31 +4,50 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>智能光纤前勘系统 5.0 | 专业版</title>
-    <script src="https://cdn.bootcdn.net/ajax/libs/tailwindcss/2.2.19/tailwind.min.js"></script>
-    <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <style>
+        /* 强制覆盖 Tailwind 可能被拦截导致的布局失效 */
+        header, nav, main, aside, section { display: block; }
+        body { background-color: #f1f5f9; font-family: sans-serif; margin: 0; padding: 0; }
+        .flex { display: flex; }
+        .flex-col { flex-direction: column; }
+        @media (min-width: 1024px) { .lg\:flex-row { flex-direction: row; } }
+        .max-w-1800px { max-width: 1800px; margin: 0 auto; }
+        .w-full { width: 100%; }
+        .bg-slate-900 { background-color: #0f172a; }
+        .text-white { color: #ffffff; }
+        .shadow-xl { box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
+        .h-16 { height: 4rem; }
+        .items-center { align-items: center; }
+        .justify-between { justify-content: space-between; }
+        .px-6 { padding-left: 1.5rem; padding-right: 1.5rem; }
+        
+        .sidebar { width: 100%; background: white; border-right: 1px solid #e2e8f0; padding: 1.5rem; box-sizing: border-box; }
+        @media (min-width: 1024px) { 
+            .sidebar { width: 400px; height: calc(100vh - 64px); position: sticky; top: 64px; } 
+        }
+        .flex-1 { flex: 1 1 0%; }
+        .p-8 { padding: 2rem; }
+        
+        /* 确保输入框和按钮有基础样式，即使 CSS 没加载 */
+        input, select, button { 
+            padding: 0.75rem; 
+            border-radius: 0.75rem; 
+            border: 1px solid #cbd5e1; 
+            margin-bottom: 0.5rem;
+            font-size: 14px;
+        }
+        button { cursor: pointer; border: none; font-weight: bold; }
+        .bg-emerald-600 { background-color: #059669; color: white; }
+        
+        .map-container { height: 300px; width: 100%; border-radius: 0.75rem; border: 1px solid #e2e8f0; }
+        .network-container { height: 500px; width: 100%; border: 1px solid #cbd5e1; border-radius: 0.75rem; background: #ffffff; }
+    </style>
+    <!-- 备用方案：如果 CDN 挂了，上面这些样式也能撑起骨架 -->
     <script src="https://cdn.bootcdn.net/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
     <script src="https://cdn.bootcdn.net/ajax/libs/marked/4.3.0/marked.min.js"></script>
     <script src="https://cdn.bootcdn.net/ajax/libs/vis-network/9.1.9/standalone/umd/vis-network.min.js"></script>
-    <style>
-        body { background-color: #f1f5f9; }
-        .sidebar { height: calc(100vh - 64px); position: sticky; top: 64px; }
-        .report-area { min-height: calc(100vh - 64px); }
-        .map-container { height: 300px; width: 100%; border-radius: 0.75rem; background: #e2e8f0; }
-        .network-container { height: 500px; width: 100%; border: 1px solid #cbd5e1; border-radius: 0.75rem; background: #ffffff; margin-top: 1rem; }
-        .markdown-body h2 { font-size: 1.5rem; font-weight: 800; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.5rem; margin-top: 1.5rem; margin-bottom: 1rem; color: #1e293b; }
-        .markdown-body h3 { font-size: 1.1rem; font-weight: 700; margin-top: 1.25rem; margin-bottom: 0.5rem; color: #334155; display: flex; align-items: center; }
-        .markdown-body ul { list-style-type: none; padding-left: 0; margin-bottom: 1rem; }
-        .markdown-body li { margin-bottom: 0.4rem; padding: 0.5rem; background: white; border-radius: 0.5rem; border: 1px solid #f1f5f9; }
-        .markdown-body table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; font-size: 0.85rem; border-radius: 0.5rem; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
-        .markdown-body th, .markdown-body td { border: 1px solid #e2e8f0; padding: 0.6rem; text-align: left; }
-        .markdown-body th { background: #f8fafc; font-weight: 600; color: #475569; }
-        
-        /* 滚动条美化 */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-    </style>
+    <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/leaflet/1.9.4/leaflet.css" />
+
 </head>
 <body class="text-slate-900 font-sans antialiased">
     <!-- Top Navbar -->
