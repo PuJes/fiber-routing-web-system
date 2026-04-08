@@ -38,18 +38,32 @@ def gcj02_to_wgs84(lng, lat):
     return [lng * 2 - mglng, lat * 2 - mglat]
 
 # ==========================================
-# 核心逻辑 B：路网引擎初始化 (单例模式)
+# 核心逻辑 B：路网引擎初始化 (跨平台自适应)
 # ==========================================
-os.chdir('/Users/jesspu/Downloads/前勘脚本打包')
-sys.path.append('/Users/jesspu/Downloads/前勘脚本打包')
+# 获取当前程序实际运行的目录（打包后为临时目录，开发时为代码目录）
+if getattr(sys, 'frozen', False):
+    current_runtime_dir = sys._MEIPASS
+else:
+    current_runtime_dir = os.path.dirname(os.path.abspath(__file__))
+
+# 优先查找特定的本地绝对路径，如果不存在（比如在别人的 Windows 上），则切换到当前程序所在的目录
+data_root = '/Users/jesspu/Downloads/前勘脚本打包'
+if not os.path.exists(data_root):
+    data_root = current_runtime_dir
+
+os.chdir(data_root)
+sys.path.append(data_root)
 
 import demo_v4
-print("⏳ 正在初始化全局路网数据库...")
+# 全局挂载引擎
+print(f"⏳ 正在初始化全局路网数据库 (数据路径: {data_root})...")
 G_ENGINE = demo_v4.GeoSpatialEngine("7级AOI（末端网格）0204.csv", "合规的FAP设施点0202.csv")
 R_ENGINE = demo_v4.FiberRoutingEngine(["中继段-1.CSV", "中继段-2.CSV"], ["传输网元查询-2026-02-10-1770716023730_1.csv", "传输网元查询-2026-02-10-1770716023730_2.csv"])
 print("✅ 路网数据库已就绪。")
 
-app = Flask(__name__, static_folder='/Users/jesspu/.openclaw/workspace/codes/fiber-routing-web/static', static_url_path='')
+# 兼容打包后的静态资源路径
+static_folder = os.path.join(current_runtime_dir, 'static')
+app = Flask(__name__, static_folder=static_folder, static_url_path='')
 
 @app.route('/')
 def index():
@@ -63,14 +77,10 @@ AMAP_KEY = "5903c4fb3c71de0a925bed908ba5d8c1"
 @app.route('/api/geocode', methods=['POST'])
 def geocode():
     address = request.json.get('address')
-    
-    # 模拟 WebAccess 语义补全
     search_query = address
     if not any(city in address for city in ["深圳", "东莞", "惠州"]):
         search_query = "深圳市" + address
         
-    # 调用高德地理编码接口 (GCJ-02)
-    # 修正：使用更安全的 URL 拼接方式，防止中文编码导致的 'ascii' 错误
     params = {
         'key': AMAP_KEY,
         'address': search_query,
@@ -85,10 +95,7 @@ def geocode():
             if data['status'] == '1' and data['geocodes']:
                 loc = data['geocodes'][0]['location'].split(',')
                 lon_gcj, lat_gcj = float(loc[0]), float(loc[1])
-                
-                # 高德返回的是 GCJ-02，在此处直接转换为 WGS84 方便后续算法
                 lon_wgs, lat_wgs = gcj02_to_wgs84(lon_gcj, lat_gcj)
-                
                 return jsonify({
                     "lon": lon_wgs,
                     "lat": lat_wgs,
@@ -101,7 +108,7 @@ def geocode():
         return jsonify({"error": f"高德接口异常: {str(e)}"}), 500
 
 # ==========================================
-# 核心逻辑 D：研报生成模块 (手写 HTML 表格渲染)
+# 核心逻辑 D：研报生成模块
 # ==========================================
 def generate_markdown_report(data):
     SEP = "---"
@@ -146,7 +153,6 @@ def plan():
     try:
         data = request.json
         lon, lat = float(data['lon']), float(data['lat'])
-        # 默认执行高德纠偏
         if not data.get('is_wgs84', False):
             lon, lat = gcj02_to_wgs84(lon, lat)
             
