@@ -242,7 +242,14 @@
             const clean = s => String(s).replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, '').trim();
 
             function addNode(name, type, isEnd) {
-                let cleanName = name.replace(/\(.*\)/g, '').split(')-').pop().split(' (目标')[0].trim();
+                // 更激进的清洗逻辑：只保留最后一段有意义的名称
+                let cleanName = name.replace(/\(.*\)/g, '')  // 去掉所有括号内容
+                                    .split(')-').pop()       // 取跳接符后内容
+                                    .split(' (目标')[0]      // 去掉设备提示
+                                    .replace(/机房无线\d/g, '机房') // 统一无线机房后缀
+                                    .replace(/一楼|二楼|三楼|负一楼|负二楼|十七楼/g, '') // 剥离楼层干扰
+                                    .trim();
+                
                 const id = clean(cleanName);
                 if (!nodeIds.has(id)) {
                     nodes.push({
@@ -267,7 +274,10 @@
                 pathParts.forEach((p, idx) => {
                     const nodeId = addNode(p, idx === 0 ? 'fap' : 'mid', idx === pathParts.length - 1);
                     if (idx > 0) {
-                        const prevId = clean(pathParts[idx-1].replace(/\(.*\)/g, '').split(')-').pop().split(' (目标')[0].trim());
+                        // 前置节点 ID 必须使用相同的逻辑清洗，否则连不起来
+                        let prevName = pathParts[idx-1].replace(/\(.*\)/g, '').split(')-').pop().split(' (目标')[0].replace(/机房无线\d/g, '机房').replace(/一楼|二楼|三楼|负一楼|负二楼|十七楼/g, '').trim();
+                        const prevId = clean(prevName);
+                        
                         if (!edges.some(e => e.from === prevId && e.to === nodeId)) {
                             const info = plan.path_details[idx-1];
                             edges.push({
