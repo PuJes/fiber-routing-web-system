@@ -219,7 +219,7 @@
             header.innerHTML = marked.parse(reportParts[0]);
             container.appendChild(header);
 
-            // 2. 循环处理每一个候选方案
+            // 2. 循环处理每一个候选方案（先放文字和表格）
             const candidates = data.raw_json.fap_to_equipment_candidates;
             candidates.forEach((cand, i) => {
                 const card = document.createElement('div');
@@ -227,9 +227,9 @@
                 
                 let planMarkdown = reportParts[i + 1] || "无法加载该方案详情";
                 
-                // 彻底解决表格不显示的问题：移除所有行首空格，并确保前后有双空行
+                // 彻底解决表格不显示的问题：移除所有行首空格
                 let processedMd = planMarkdown.split('\n')
-                    .map(line => line.trim()) // 移除行首空格
+                    .map(line => line.trim())
                     .join('\n');
                 
                 // 针对表格语法的强制修复
@@ -237,8 +237,9 @@
                 processedMd = processedMd.replace(/(\n\| :---.*\|)\n/g, "$1\n\n");
 
                 card.innerHTML = `
+                    <div class="markdown-body">${marked.parse(processedMd.trim())}</div>
+                    <div class="text-xs font-black text-slate-400 uppercase tracking-widest mt-12 mb-4">交互式路由拓扑图 (Interactive Topology)</div>
                     <div class="network-container shadow-xl" id="net_combined_${i}"></div>
-                    <div class="markdown-body mt-8">${marked.parse(processedMd)}</div>
                 `;
                 container.appendChild(card);
                 renderCombinedNetwork(document.getElementById(`net_combined_${i}`), cand);
