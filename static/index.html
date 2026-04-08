@@ -227,13 +227,18 @@
                 
                 let planMarkdown = reportParts[i + 1] || "无法加载该方案详情";
                 
-                // 核心修复：前端强行在表格语法前后补齐空行，确保 marked.parse 能识别
-                planMarkdown = planMarkdown.replace(/(\|.*\|)\n(\| :---)/g, "$1\n\n$2");
-                planMarkdown = planMarkdown.replace(/(\|.*\|)\n(?![\|])/g, "$1\n\n");
+                // 彻底解决表格不显示的问题：移除所有行首空格，并确保前后有双空行
+                let processedMd = planMarkdown.split('\n')
+                    .map(line => line.trim()) // 移除行首空格
+                    .join('\n');
+                
+                // 针对表格语法的强制修复
+                processedMd = processedMd.replace(/(\|.*\|)\n(\| :---)/g, "$1\n\n$2");
+                processedMd = processedMd.replace(/(\n\| :---.*\|)\n/g, "$1\n\n");
 
                 card.innerHTML = `
                     <div class="network-container shadow-xl" id="net_combined_${i}"></div>
-                    <div class="markdown-body mt-8">${marked.parse(planMarkdown.trim())}</div>
+                    <div class="markdown-body mt-8">${marked.parse(processedMd)}</div>
                 `;
                 container.appendChild(card);
                 renderCombinedNetwork(document.getElementById(`net_combined_${i}`), cand);
