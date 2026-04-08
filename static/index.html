@@ -158,23 +158,36 @@
             function addNode(name, type, isEnd = false) {
                 const id = clean(name);
                 if (!nodeIds.has(id)) {
-                    let color = '#f1f5f9';
-                    let border = '#94a3b8';
+                    let color = '#94a3b8'; // 中间节点：灰色
+                    let border = '#64748b';
                     let label = name;
                     
-                    if (type === 'fap') { color = '#eff6ff'; border = '#2563eb'; label = "🔌 " + name; }
-                    else if (isEnd) { color = '#ecfdf5'; border = '#059669'; label = "🏁 " + name; }
-                    else { color = '#f8fafc'; border = '#64748b'; label = "🏠 " + name; }
+                    if (type === 'fap') { 
+                        color = '#3b82f6'; // 起点：蓝色
+                        border = '#1d4ed8'; 
+                    } else if (isEnd) { 
+                        color = '#10b981'; // 终点：绿色
+                        border = '#047857'; 
+                    }
 
                     nodes.push({
                         id: id,
                         label: label,
-                        shape: 'box',
-                        margin: 10,
-                        font: { size: 13, face: 'Inter', color: '#334155' },
-                        color: { background: color, border: border, highlight: { background: color, border: border } },
+                        shape: 'dot', // 改为圆点
+                        size: 15,
+                        font: { 
+                            size: 12, 
+                            face: 'Inter', 
+                            color: '#334155',
+                            vadjust: -35 // 将文字标注放在圆点上方
+                        },
+                        color: { 
+                            background: color, 
+                            border: border, 
+                            highlight: { background: color, border: border } 
+                        },
                         borderWidth: 2,
-                        shadow: { enabled: true, color: 'rgba(0,0,0,0.05)', size: 5, x: 2, y: 2 }
+                        shadow: { enabled: true, color: 'rgba(0,0,0,0.1)', size: 3, x: 1, y: 1 }
                     });
                     nodeIds.add(id);
                 }
@@ -189,13 +202,27 @@
                 const pathParts = plan.routing.split('->');
                 
                 pathParts.forEach((p, idx) => {
-                    const name = p.split(')-').pop() || p;
+                    // 核心修复：更鲁棒的节点名称提取逻辑，防止同一个点因为标注不同产生多个分身
+                    let name = p;
+                    if (p.includes(')-')) {
+                        name = p.split(')-').pop();
+                    }
+                    if (name.includes(' (目标网元')) {
+                        name = name.split(' (目标网元')[0];
+                    }
+                    // 进一步清洗名称，确保起点在所有路径中 ID 绝对一致
+                    name = name.trim();
+
                     const isFap = (idx === 0);
                     const isEnd = (idx === pathParts.length - 1);
                     const nodeId = addNode(name, isFap ? 'fap' : 'mid', isEnd);
 
                     if (idx > 0) {
-                        const prevName = pathParts[idx-1].split(')-').pop() || pathParts[idx-1];
+                        let prevName = pathParts[idx-1];
+                        if (prevName.includes(')-')) {
+                            prevName = prevName.split(')-').pop();
+                        }
+                        prevName = prevName.trim();
                         const prevId = clean(prevName);
                         
                         // 连线信息提取
@@ -209,12 +236,11 @@
                                 from: prevId,
                                 to: nodeId,
                                 label: label,
-                                font: { size: 10, align: 'middle', color: '#059669' },
+                                font: { size: 10, align: 'middle', color: '#059669', background: 'rgba(255,255,255,0.7)' },
                                 arrows: 'to',
                                 color: { color: '#10b981', opacity: 0.6 },
                                 width: 2,
-                                length: 250, // 初始长度
-                                smooth: { type: 'curvedCW', roundness: 0.2 }
+                                smooth: { enabled: false } // 改为直线
                             });
                         }
                     }
