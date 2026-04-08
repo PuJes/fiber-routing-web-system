@@ -81,6 +81,13 @@ app = Flask(__name__, static_folder=static_folder, static_url_path='')
 def index():
     return app.send_static_file('index.html')
 
+@app.route('/api/shutdown', methods=['POST'])
+def shutdown():
+    print("🛑 正在接收关闭指令...")
+    # 延迟 1 秒执行，给前端返回成功的时间
+    Timer(1, lambda: os._exit(0)).start()
+    return jsonify({"success": True, "message": "服务正在关闭..."})
+
 # ==========================================
 # 核心逻辑 C：地址解析 (高德官方 API 引擎)
 # ==========================================

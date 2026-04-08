@@ -92,7 +92,10 @@
                 <span style="font-size:32px;">🦞</span>
                 <span style="font-weight:900; font-size:24px; letter-spacing:-1px;">FIBER ROUTING <span style="color:var(--primary);">PRO</span></span>
             </div>
-            <div style="font-size:13px; font-weight:600; opacity:0.6;">终极稳定版 v5.17 Stable</div>
+            <div style="display:flex; align-items:center; gap:20px;">
+                <div style="font-size:13px; font-weight:600; opacity:0.6;">终极稳定版 v5.34 Stable</div>
+                <button onclick="shutdownServer()" style="background:#dc2626; color:white; padding:6px 12px; font-size:12px; border-radius:6px; cursor:pointer;">🛑 关闭系统</button>
+            </div>
         </nav>
 
         <div class="main-content">
@@ -220,6 +223,21 @@
                 renderReport(result);
             } catch(e) {
                 container.innerHTML = `<div style="color:red;padding:20px;">系统错误: ${e.message}</div>`;
+            }
+        }
+
+        async function shutdownServer() {
+            if (confirm("确定要关闭后台算路引擎并退出程序吗？")) {
+                try {
+                    await fetch('/api/shutdown', { method: 'POST' });
+                    document.body.innerHTML = '<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; background:#0f172a; color:white; font-family:sans-serif; text-align:center;">' +
+                        '<span style="font-size:100px; margin-bottom:20px;">🦞</span>' +
+                        '<h1 style="font-size:32px; font-weight:900;">系统已安全关闭</h1>' +
+                        '<p style="color:#94a3b8; margin-top:10px;">后台引擎已停止，您可以安全地关闭此浏览器窗口。</p>' +
+                        '</div>';
+                } catch (e) {
+                    alert("服务已停止。");
+                }
             }
         }
 
