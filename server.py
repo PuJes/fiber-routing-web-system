@@ -53,9 +53,14 @@ def index():
 @app.route('/api/geocode', methods=['POST'])
 def geocode():
     address = request.json.get('address')
-    # 使用 Nominatim 获取详细结构化地址 (WGS84)，限制在深莞惠范围以提速 (viewbox: 113.5,22.3,115.0,23.3)
-    url = "https://nominatim.openstreetmap.org/search?q=" + urllib.parse.quote(address) + "&format=json&limit=1&addressdetails=1&viewbox=113.5,22.3,115.0,23.3&bounded=1"
-    req = urllib.request.Request(url, headers={'User-Agent': 'FiberRoutingPRO/5.17'})
+    # 使用 Nominatim 获取详细结构化地址 (WGS84)，放宽限制范围或增加优先级
+    # 逻辑优化：如果直接搜没搜到，尝试增加 "广东省" 前缀，并扩大 viewbox
+    search_query = address
+    if "省" not in address and "市" not in address:
+        search_query = "广东省" + address
+        
+    url = "https://nominatim.openstreetmap.org/search?q=" + urllib.parse.quote(search_query) + "&format=json&limit=1&addressdetails=1&viewbox=112.5,21.5,116.5,24.5&bounded=0"
+    req = urllib.request.Request(url, headers={'User-Agent': 'FiberRoutingPRO/5.23'})
     try:
         with urllib.request.urlopen(req) as response:
             data = json.loads(response.read().decode())
