@@ -113,16 +113,16 @@ def generate_markdown_report(data):
                     n1 = nodes[idx]
                     n2 = nodes[idx+1]
                     
-                    # 彻底移除所有可能引起语法错误的符号，包括 Mermaid 里的关键分隔符
-                    for char in ['(', ')', '"', '\'', '-', '>', '/', '#', ';', '[', ']', '\\', '\n']:
-                        n1 = n1.replace(char, ' ')
-                        n2 = n2.replace(char, ' ')
+                    # 彻底移除所有可能引起语法错误的符号
+                    def clean_name(s):
+                        import re
+                        # 只保留中文、字母、数字
+                        return re.sub(r'[^\u4e00-\u9fa5a-zA-Z0-9]', '', str(s))
                     
-                    free = detail.get('空闲数量', '0')
-                    total = detail.get('中继纤芯数量', '0')
-                    dist = detail.get('长度', '0')
+                    n1_clean = clean_name(n1)
+                    n2_clean = clean_name(n2)
                     
-                    md += f"    N{idx}A[\"{FAP_ICON if idx==0 else ROOM_ICON} {n1.strip()}\"] -- {free}芯_{dist}m --> N{idx+1}A[\"{ROOM_ICON} {n2.strip()}\"]\n"
+                    md += f"    N{idx}A[\"{FAP_ICON if idx==0 else ROOM_ICON} {n1_clean}\"] -- {free}core_{dist}m --> N{idx+1}A[\"{ROOM_ICON} {n2_clean}\"]\n"
                     if idx == 0: md += f"    class N{idx}A fap;\n"
                     else: md += f"    class N{idx}A room;\n"
                     md += f"    class N{idx+1}A room;\n"
@@ -157,15 +157,16 @@ def generate_markdown_report(data):
                     n1 = nodes[idx]
                     n2 = nodes[idx+1]
                     
-                    for char in ['(', ')', '"', '\'', '-', '>', '/', '#', ';', '[', ']', '\\', '\n']:
-                        n1 = n1.replace(char, ' ')
-                        n2 = n2.replace(char, ' ')
+                    # 彻底移除所有可能引起语法错误的符号
+                    def clean_name(s):
+                        import re
+                        # 只保留中文、字母、数字
+                        return re.sub(r'[^\u4e00-\u9fa5a-zA-Z0-9]', '', str(s))
                     
-                    free = detail.get('空闲数量', '0')
-                    total = detail.get('中继纤芯数量', '0')
-                    dist = detail.get('长度', '0')
+                    n1_clean = clean_name(n1)
+                    n2_clean = clean_name(n2)
                     
-                    md += f"    N{idx}B[\"{FAP_ICON if idx==0 else ROOM_ICON} {n1.strip()}\"] -- {free}芯_{dist}m --> N{idx+1}B[\"{ROOM_ICON} {n2.strip()}\"]\n"
+                    md += f"    N{idx}B[\"{FAP_ICON if idx==0 else ROOM_ICON} {n1_clean}\"] -- {free}core_{dist}m --> N{idx+1}B[\"{ROOM_ICON} {n2_clean}\"]\n"
                     if idx == 0: md += f"    class N{idx}B fap;\n"
                     else: md += f"    class N{idx}B room;\n"
                     md += f"    class N{idx+1}B room;\n"
