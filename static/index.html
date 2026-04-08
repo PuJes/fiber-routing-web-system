@@ -131,85 +131,113 @@
                 const candDiv = document.createElement('div');
                 candDiv.className = "mt-8 p-4 border-l-4 border-indigo-500 bg-gray-50 rounded-r-lg";
                 candDiv.innerHTML = `<h2 class="text-xl font-bold text-indigo-800">方案 ${i+1}: ${cand.fap_name}</h2>
-                                     <p class="text-sm text-gray-600 mb-4">距离起点: ${cand.distance_to_query_point_meters} 米</p>`;
+                                     <p class="text-sm text-gray-600 mb-4">距离起点: ${cand.distance_to_query_point_meters} 米</p>
+                                     <div class="network-container h-[600px] w-full bg-white border rounded-lg mt-4" id="net_combined_${i}"></div>`;
                 container.appendChild(candDiv);
 
-                // 渲染子方案 A 和 B
-                renderSubPlan(candDiv, cand.equipment_routing_plan, "🌟 子方案 A: 绝对最近接入");
-                renderSubPlan(candDiv, cand.transmission_room_routing_plan, "🛡️ 子方案 B: 高可靠传输机房接入");
+                renderCombinedNetwork(candDiv.querySelector('.network-container'), cand);
             });
         }
 
-        function renderSubPlan(parent, plan, title) {
-            if(!plan || plan.status !== 'success') return;
-
-            const div = document.createElement('div');
-            div.className = "mt-6";
-            div.innerHTML = `<h3 class="font-bold text-lg mb-2">${title}</h3>
-                             <ul class="text-sm mb-4 space-y-1">
-                                <li>• <b>跳数</b>: ${plan.jumps}</li>
-                                <li>• <b>总距离</b>: ${plan.distance_meters} 米</li>
-                                <li>• <b>终点</b>: ${plan.found_at_node}</li>
-                             </ul>
-                             <div class="network-container" id="net_${Math.random().toString(36).substr(2,9)}"></div>`;
-            parent.appendChild(div);
-
-            const netContainer = div.querySelector('.network-container');
-            
-            // 构建 Vis Network 数据
+        function renderCombinedNetwork(container, cand) {
             const nodes = [];
             const edges = [];
-            
-            if(plan.jumps === 0) {
-                nodes.push({id: 1, label: '🔌 起点/机房直连', shape: 'box', color: '#e1f5fe', font: {size: 14}});
-            } else {
-                // 简单的从路由字符串解析
-                const parts = plan.routing.split('->');
-                parts.forEach((p, idx) => {
-                    const nodeName = p.split(')-').pop() || p;
+            const nodeIds = new Set();
+
+            function addNode(id, label, type) {
+                const cleanId = id.replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, '');
+                if (!nodeIds.has(cleanId)) {
+                    let color = '#94a3b8'; // default
+                    let shape = 'dot';
+                    if (type === 'fap') color = '#3b82f6';
+                    if (type === 'room_a') color = '#10b981'; // 方案A终点绿色
+                    if (type === 'room_b') color = '#f59e0b'; // 方案B终点橙色
+                    
                     nodes.push({
-                        id: idx, 
-                        label: (idx === 0 ? "🔌 " : "🏠 ") + nodeName, 
-                        shape: 'dot',
-                        size: 20,
-                        color: idx === 0 ? '#3b82f6' : (idx === parts.length - 1 ? '#10b981' : '#94a3b8')
+                        id: cleanId,
+                        label: label,
+                        shape: shape,
+                        size: 25,
+                        color: color,
+                        font: { size: 14, color: '#334155', multi: true }
                     });
-                    if(idx > 0) {
+                    nodeIds.add(cleanId);
+                }
+                return cleanId;
+            }
+
+            // 处理方案 A
+            const planA = cand.equipment_routing_plan;
+            if (planA && planA.status === 'success') {
+                const path = planA.routing.split('->');
+                path.forEach((p, idx) => {
+                    const name = p.split(')-').pop() || p;
+                    const type = (idx === 0) ? 'fap' : (idx === path.length - 1 ? 'room_a' : 'mid');
+                    const icon = (idx === 0) ? "🔌 " : "🏠 ";
+                    const nodeId = addNode(name, icon + name, type);
+                    
+                    if (idx > 0) {
+                        const prevName = path[idx-1].split(')-').pop() || path[idx-1];
+                        const prevId = prevName.replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, '');
                         edges.push({
-                            from: idx - 1, 
-                            to: idx, 
-                            label: '光缆', 
-                            arrows: 'to', 
-                            color: {color:'#10b981', highlight:'#059669'},
-                            width: 3
+                            from: prevId,
+                            to: nodeId,
+                            label: '方案A: 绝对最近',
+                            color: { color: '#10b981', opacity: 0.8 },
+                            width: 3,
+                            arrows: 'to'
                         });
                     }
                 });
             }
 
-            new vis.Network(netContainer, {nodes, edges}, {
-                nodes: { font: { face: 'Inter' } },
-                edges: { font: { align: 'top' } },
-                physics: { 
-                    enabled: false, // 禁用物理引擎，防止拖拽时群魔乱舞
-                    stabilization: true 
-                },
-                layout: {
-                    hierarchical: {
-                        enabled: true,
-                        direction: 'LR', // 从左到右排列
-                        sortMethod: 'directed',
-                        levelSeparation: 200,
-                        nodeSpacing: 150
+            // 处理方案 B
+            const planB = cand.transmission_room_routing_plan;
+            if (planB && planB.status === 'success') {
+                const path = planB.routing.split('->');
+                path.forEach((p, idx) => {
+                    const name = p.split(')-').pop() || p;
+                    const type = (idx === 0) ? 'fap' : (idx === path.length - 1 ? 'room_b' : 'mid');
+                    const icon = (idx === 0) ? "🔌 " : "🏠 ";
+                    const nodeId = addNode(name, icon + name, type);
+                    
+                    if (idx > 0) {
+                        const prevName = path[idx-1].split(')-').pop() || path[idx-1];
+                        const prevId = prevName.replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, '');
+                        edges.push({
+                            from: prevId,
+                            to: nodeId,
+                            label: '方案B: 高可靠',
+                            color: { color: '#f59e0b', opacity: 0.8 },
+                            width: 2,
+                            dashes: true, // 方案B用虚线区分
+                            arrows: 'to'
+                        });
                     }
+                });
+            }
+
+            const options = {
+                nodes: { font: { face: 'Inter' } },
+                physics: {
+                    enabled: false // 完全禁用物理，实现自由拉伸
                 },
                 interaction: {
                     dragNodes: true,
                     dragView: true,
-                    zoomView: true
+                    zoomView: true,
+                    hover: true
+                },
+                layout: {
+                    hierarchical: false // 禁用强制层级，允许自由排布
                 }
-            });
+            };
+
+            new vis.Network(container, { nodes, edges }, options);
         }
+
+        // 移除旧的 renderSubPlan 函数，因为它不再被使用
+
     </script>
 </body>
 </html>
