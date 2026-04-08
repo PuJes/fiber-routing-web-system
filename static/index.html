@@ -35,15 +35,20 @@
         #map { height: 280px; width: 100%; border-radius: 8px; background: #eee; border: 1px solid #e2e8f0; }
 
         /* 报表区 */
-        .report-view { flex: 1; padding: 32px; overflow-y: auto; background: #f8fafc; }
-        .report-inner { max-width: 900px; margin: 0 auto; }
+        .report-view { flex: 1; padding: 24px; overflow-y: auto; background: #f8fafc; }
+        .report-inner { width: 100%; max-width: 1200px; margin: 0 auto; }
         .network-container { height: 500px; width: 100%; border: 1px solid #e2e8f0; border-radius: 16px; background: white; margin: 20px 0; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
         
-        /* Markdown 样式覆盖 */
-        .markdown-body h2 { font-size: 24px; font-weight: 800; border-bottom: 3px solid #e2e8f0; padding-bottom: 8px; margin-top: 40px; }
-        .markdown-body table { width: 100%; border-collapse: collapse; margin: 16px 0; }
-        .markdown-body th { background: #f1f5f9; text-align: left; padding: 12px; }
-        .markdown-body td { border-bottom: 1px solid #f1f5f9; padding: 12px; }
+        /* Markdown 样式优化：防止溢出和隔断 */
+        .markdown-body { line-height: 1.6; word-wrap: break-word; }
+        .markdown-body h2 { font-size: 24px; font-weight: 800; border-bottom: 3px solid #e2e8f0; padding-bottom: 8px; margin-top: 40px; color: #0f172a; }
+        .markdown-body table { width: 100%; border-collapse: collapse; margin: 16px 0; display: table; table-layout: auto; }
+        .markdown-body th { background: #f1f5f9; text-align: left; padding: 12px; font-weight: 700; white-space: nowrap; }
+        .markdown-body td { border-bottom: 1px solid #f1f5f9; padding: 12px; font-size: 13px; }
+        /* 针对长路径字符串防止隔断 */
+        .markdown-body code { white-space: pre-wrap; word-break: break-all; }
+        .markdown-body p { margin: 12px 0; }
+        .card-content { width: 100%; overflow-x: hidden; }
     </style>
 </head>
 <body>
@@ -183,9 +188,10 @@
                 const card = document.createElement('div');
                 card.style.background = "white"; card.style.padding = "30px"; card.style.borderRadius = "24px";
                 card.style.boxShadow = "0 10px 25px -5px rgba(0,0,0,0.05)"; card.style.margin = "40px 0";
+                card.style.width = "100%"; card.style.boxSizing = "border-box";
                 card.innerHTML = `<h2 style="margin-top:0;">方案 ${i+1}: ${cand.fap_name}</h2>
                                   <div class="network-container" id="net_combined_${i}"></div>
-                                  <div class="markdown-body">${marked.parse(data.markdown.split('---')[i+1] || "")}</div>`;
+                                  <div class="markdown-body card-content">${marked.parse(data.markdown.split('---')[i+1] || "")}</div>`;
                 container.appendChild(card);
                 renderCombinedNetwork(document.getElementById(`net_combined_${i}`), cand);
             });
