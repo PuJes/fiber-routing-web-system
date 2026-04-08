@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>智能光纤前勘 PRO | 极致性能与工程级布局</title>
-    <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <title>智能光纤前勘 PRO | 离线加固版</title>
+    <!-- 优先尝试本地资源，彻底解决网络环境导致的地图加载失败 -->
+    <link rel="stylesheet" href="/libs/tailwind.min.css" />
+    <link rel="stylesheet" href="/libs/leaflet.css" />
     <style>
         :root {
             --primary: #2563eb;
@@ -28,7 +30,6 @@
 
         .main-content { display: flex; flex: 1; overflow: hidden; }
 
-        /* 左侧边栏：固定宽度，自适应内部滚动 */
         .sidebar { 
             width: 420px; background: white; border-right: 1px solid var(--slate-200); 
             display: flex; flex-direction: column; padding: 24px; box-sizing: border-box; 
@@ -38,7 +39,6 @@
         .card { background: white; border: 1px solid var(--slate-100); border-radius: 16px; padding: 20px; margin-bottom: 24px; box-shadow: 0 2px 4px rgba(0,0,0,0.04); }
         .section-title { font-size: 11px; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 12px; letter-spacing: 0.1em; }
 
-        /* 输入控件 */
         .input-group { display: flex; gap: 10px; margin-bottom: 10px; }
         input, select { 
             flex: 1; padding: 12px 16px; border: 1px solid var(--slate-200); border-radius: 10px; 
@@ -60,9 +60,8 @@
             border-radius: 10px; line-height: 1.6; border-left: 4px solid var(--primary); margin-top: 12px;
         }
 
-        #map { height: 320px; width: 100%; border-radius: 12px; background: #eee; border: 1px solid var(--slate-200); }
+        #map { height: 320px; width: 100%; border-radius: 12px; background: #f1f5f9; border: 1px solid var(--slate-200); position: relative; }
 
-        /* 右侧报表区：沉浸式阅读，居中排版 */
         .report-view { flex: 1; padding: 48px; overflow-y: auto; background: var(--slate-100); }
         .report-inner { max-width: 1100px; margin: 0 auto; }
 
@@ -73,20 +72,13 @@
 
         .network-container { height: 500px; width: 100%; border: 1px solid var(--slate-100); border-radius: 20px; background: white; margin: 32px 0; }
 
-        /* Markdown 样式 */
         .markdown-body { line-height: 1.8; color: var(--slate-700); font-size: 15px; }
         .markdown-body h2 { font-size: 32px; font-weight: 900; color: var(--slate-900); margin-top: 0; margin-bottom: 24px; letter-spacing: -0.02em; }
         .markdown-body h3 { font-size: 20px; font-weight: 700; color: var(--slate-800); margin-top: 32px; margin-bottom: 16px; border-left: 5px solid var(--primary); padding-left: 15px; }
         .markdown-body table { width: 100%; border-collapse: collapse; margin: 24px 0; table-layout: fixed; }
         .markdown-body th { background: var(--slate-50); text-align: left; padding: 16px; font-weight: 700; border-bottom: 2px solid var(--slate-200); color: var(--slate-700); }
         .markdown-body td { padding: 16px; border-bottom: 1px solid var(--slate-100); word-break: break-all; vertical-align: top; }
-        .markdown-body tr:hover td { background: var(--slate-50); }
         
-        /* 状态微章 */
-        .status-pill { display: inline-block; padding: 2px 10px; border-radius: 99px; font-size: 12px; font-weight: 600; }
-        .status-active { background: #dcfce7; color: #166534; }
-        .status-pending { background: #fef9c3; color: #854d0e; }
-
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
@@ -99,7 +91,7 @@
                 <span style="font-size:32px;">🦞</span>
                 <span style="font-weight:900; font-size:24px; letter-spacing:-1px;">FIBER ROUTING <span style="color:var(--primary);">PRO</span></span>
             </div>
-            <div style="font-size:13px; font-weight:600; opacity:0.6;">工程级前勘自动化套件 v5.5 Stable</div>
+            <div style="font-size:13px; font-weight:600; opacity:0.6;">离线加固版 v5.8 Stable</div>
         </nav>
 
         <div class="main-content">
@@ -116,8 +108,8 @@
                 <div class="card">
                     <div class="section-title">Step 2. 算路策略配置</div>
                     <div class="input-group">
-                        <input type="number" id="lonInput" step="0.000001" placeholder="经度 (WGS84)">
-                        <input type="number" id="latInput" step="0.000001" placeholder="纬度 (WGS84)">
+                        <input type="number" id="lonInput" step="0.000001" placeholder="经度">
+                        <input type="number" id="latInput" step="0.000001" placeholder="纬度">
                     </div>
                     <select id="networkType" style="width:100%; margin-top:10px;">
                         <option value="PTN">PTN 分组传送网络</option>
@@ -129,8 +121,8 @@
                 <div class="card" style="padding:10px;">
                     <div class="section-title">Map Preview</div>
                     <div id="map"></div>
-                    <div style="font-size:11px; color:#94a3b8; text-align:center; margin-top:12px; font-style:italic;">
-                        地图选点将自动执行 GCJ-02 纠偏校准
+                    <div style="font-size:11px; color:#94a3b8; text-align:center; margin-top:12px;">
+                        地图点击自动执行 GCJ-02 纠偏
                     </div>
                 </div>
             </aside>
@@ -138,45 +130,47 @@
             <main class="report-view">
                 <div id="reportContainer" class="report-inner">
                     <div style="text-align:center; padding-top:150px; color:#cbd5e1;">
-                        <span style="font-size:100px; display:block; margin-bottom:30px; filter:grayscale(1);">🔍</span>
+                        <span style="font-size:100px; display:block; margin-bottom:30px;">🛰️</span>
                         <p style="font-size:22px; font-weight:800; color:#94a3b8;">等待输入数据以生成交互式拓扑研报</p>
-                        <p style="font-size:14px; margin-top:10px;">由双轨多径引擎驱动 • 毫秒级寻踪</p>
                     </div>
                 </div>
             </main>
         </div>
     </div>
 
-    <!-- 加载资源 -->
-    <script src="https://cdn.bootcdn.net/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
-    <script src="https://cdn.bootcdn.net/ajax/libs/marked/4.3.0/marked.min.js"></script>
-    <script src="https://cdn.bootcdn.net/ajax/libs/vis-network/9.1.9/standalone/umd/vis-network.min.js"></script>
+    <!-- 加载本地化的脚本资源 -->
+    <script src="/libs/leaflet.js"></script>
+    <script src="/libs/marked.min.js"></script>
+    <script src="/libs/vis-network.min.js"></script>
 
     <script>
         let map, marker, isWgs84 = false;
 
         window.onload = () => {
-            map = L.map('map', { zoomControl: false }).setView([22.5428, 114.0531], 13);
-            L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
-                subdomains: ['1', '2', '3', '4'], maxZoom: 18
-            }).addTo(map);
+            try {
+                map = L.map('map', { zoomControl: false }).setView([22.5428, 114.0531], 13);
+                L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
+                    subdomains: ['1', '2', '3', '4'], maxZoom: 18
+                }).addTo(map);
 
-            map.on('click', e => {
-                document.getElementById('latInput').value = e.latlng.lat.toFixed(6);
-                document.getElementById('lonInput').value = e.latlng.lng.toFixed(6);
-                isWgs84 = false;
-                if(marker) map.removeLayer(marker);
-                marker = L.marker(e.latlng).addTo(map);
-                document.getElementById('addressDetail').style.display = 'none';
-            });
+                map.on('click', e => {
+                    document.getElementById('latInput').value = e.latlng.lat.toFixed(6);
+                    document.getElementById('lonInput').value = e.latlng.lng.toFixed(6);
+                    isWgs84 = false;
+                    if(marker) map.removeLayer(marker);
+                    marker = L.marker(e.latlng).addTo(map);
+                    document.getElementById('addressDetail').style.display = 'none';
+                });
+                console.log("Map initialized.");
+            } catch (e) {
+                console.error("Map error:", e);
+                document.getElementById('map').innerHTML = "<div style='padding:20px;color:red'>地图资源加载失败，请检查静态目录。</div>";
+            }
         };
 
         async function searchAddress() {
-            const btn = document.querySelector('.btn-primary');
             const addr = document.getElementById('addressInput').value;
             if(!addr) return;
-            btn.innerText = "检索中...";
-            
             try {
                 const res = await fetch('/api/geocode', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({address:addr})});
                 const data = await res.json();
@@ -187,20 +181,16 @@
                     const detailBox = document.getElementById('addressDetail');
                     detailBox.style.display = 'block';
                     detailBox.innerHTML = `<strong>📍 匹配目标：</strong><br>${data.display_name}`;
-                    const pos = [data.lat, data.lon];
                     if(marker) map.removeLayer(marker);
-                    marker = L.marker(pos).addTo(map);
-                    map.setView(pos, 16);
+                    marker = L.marker([data.lat, data.lon]).addTo(map);
+                    map.setView([data.lat, data.lon], 16);
                 }
-            } finally { btn.innerText = "解析地址"; }
+            } catch(e) {}
         }
 
         async function calculateRoute() {
             const container = document.getElementById('reportContainer');
-            const btn = document.getElementById('mainBtn');
-            const oldHtml = container.innerHTML;
-            container.innerHTML = '<div style="text-align:center; padding-top:150px;"><div style="width:50px;height:50px;border:5px solid #f3f3f3;border-top:5px solid #2563eb;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 20px;"></div><p style="font-weight:800;color:#64748b;">深度路网寻踪中...</p></div><style>@keyframes spin {0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}</style>';
-            
+            container.innerHTML = '<div style="text-align:center; padding-top:150px;"><p style="font-weight:800;color:#64748b;">深度路网寻踪中...</p></div>';
             try {
                 const res = await fetch('/api/plan', {
                     method:'POST', headers:{'Content-Type':'application/json'}, 
@@ -213,7 +203,7 @@
                 const result = await res.json();
                 renderReport(result);
             } catch(e) {
-                container.innerHTML = `<div style="color:#dc2626; padding:30px; background:#fef2f2; border-radius:20px; border:1px solid #fee2e2;"><strong>❌ 算路引擎异常：</strong><br>${e.message}</div>`;
+                container.innerHTML = `<div style="color:red;padding:20px;">系统错误: ${e.message}</div>`;
             }
         }
 
@@ -222,7 +212,6 @@
             container.innerHTML = ""; 
             const header = document.createElement('div');
             header.className = "markdown-body";
-            header.style.marginBottom = "40px";
             header.innerHTML = marked.parse(data.markdown.split('---')[0]);
             container.appendChild(header);
 
@@ -242,23 +231,15 @@
             const clean = s => String(s).replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, '').trim();
 
             function addNode(name, type, isEnd) {
-                // 更激进的清洗逻辑：只保留最后一段有意义的名称
-                let cleanName = name.replace(/\(.*\)/g, '')  // 去掉所有括号内容
-                                    .split(')-').pop()       // 取跳接符后内容
-                                    .split(' (目标')[0]      // 去掉设备提示
-                                    .replace(/机房无线\d/g, '机房') // 统一无线机房后缀
-                                    .replace(/一楼|二楼|三楼|负一楼|负二楼|十七楼/g, '') // 剥离楼层干扰
-                                    .trim();
-                
+                let cleanName = name.replace(/\(.*\)/g, '').split(')-').pop().split(' (目标')[0].trim();
                 const id = clean(cleanName);
                 if (!nodeIds.has(id)) {
                     nodes.push({
                         id: id, label: cleanName, shape: 'dot', size: 16,
-                        font: { size: 13, vadjust: -35, color: '#1e293b', face: 'Inter' },
+                        font: { size: 13, vadjust: -35, color: '#1e293b' },
                         color: {
                             background: type === 'fap' ? '#3b82f6' : (isEnd ? '#10b981' : '#94a3b8'),
-                            border: type === 'fap' ? '#1d4ed8' : (isEnd ? '#047857' : '#64748b'),
-                            highlight: { background: '#f59e0b', border: '#d97706' }
+                            border: type === 'fap' ? '#1d4ed8' : (isEnd ? '#047857' : '#64748b')
                         },
                         borderWidth: 2, shadow: true
                     });
@@ -274,17 +255,14 @@
                 pathParts.forEach((p, idx) => {
                     const nodeId = addNode(p, idx === 0 ? 'fap' : 'mid', idx === pathParts.length - 1);
                     if (idx > 0) {
-                        // 前置节点 ID 必须使用相同的逻辑清洗，否则连不起来
-                        let prevName = pathParts[idx-1].replace(/\(.*\)/g, '').split(')-').pop().split(' (目标')[0].replace(/机房无线\d/g, '机房').replace(/一楼|二楼|三楼|负一楼|负二楼|十七楼/g, '').trim();
-                        const prevId = clean(prevName);
-                        
+                        const prevId = clean(pathParts[idx-1].replace(/\(.*\)/g, '').split(')-').pop().split(' (目标')[0].trim());
                         if (!edges.some(e => e.from === prevId && e.to === nodeId)) {
                             const info = plan.path_details[idx-1];
                             edges.push({
                                 from: prevId, to: nodeId, 
                                 label: `${info.空闲数量}芯/${info.长度}m`,
                                 font: { size: 10, align: 'middle', background: 'white' },
-                                arrows: 'to', color: { color: '#10b981', opacity: 0.6 }, width: 3, smooth: false
+                                arrows: 'to', color: '#10b981', width: 3, smooth: false
                             });
                         }
                     }
@@ -293,7 +271,7 @@
 
             const network = new vis.Network(container, { nodes, edges }, {
                 physics: { enabled: true, stabilization: { iterations: 200 } },
-                interaction: { dragNodes: true, dragView: true, zoomView: true, hover: true }
+                interaction: { dragNodes: true, dragView: true, zoomView: true }
             });
             network.on("stabilizationIterationsDone", () => network.setOptions({ physics: false }));
         }
