@@ -7,7 +7,9 @@ import math
 import re
 from flask import Flask, request, jsonify
 
-# GCJ-02 to WGS84 Conversion logic
+# ==========================================
+# 核心逻辑 A：坐标系纠偏模块 (GCJ-02 -> WGS-84)
+# ==========================================
 def transformlat(lng, lat):
     ret = -100.0 + 2.0 * lng + 3.0 * lat + 0.2 * lat * lat + 0.1 * lng * lat + 0.2 * math.sqrt(math.fabs(lng))
     ret += (20.0 * math.sin(6.0 * lng * math.pi) + 20.0 * math.sin(2.0 * lng * math.pi)) * 2.0 / 3.0
@@ -35,15 +37,18 @@ def gcj02_to_wgs84(lng, lat):
     mglng = lng + dlng
     return [lng * 2 - mglng, lat * 2 - mglat]
 
-# Important: Run within the backend script directory so CSV loading works
+# ==========================================
+# 核心逻辑 B：路网引擎初始化 (单例模式)
+# ==========================================
 os.chdir('/Users/jesspu/Downloads/前勘脚本打包')
 sys.path.append('/Users/jesspu/Downloads/前勘脚本打包')
 
-print("⏳ 正在挂载空间引擎和路网引擎到内存，请稍候...（约需5秒）")
 import demo_v4
-geo_engine = demo_v4.GeoSpatialEngine("7级AOI（末端网格）0204.csv", "合规的FAP设施点0202.csv")
-route_engine = demo_v4.FiberRoutingEngine(["中继段-1.CSV", "中继段-2.CSV"], ["传输网元查询-2026-02-10-1770716023730_1.csv", "传输网元查询-2026-02-10-1770716023730_2.csv"])
-print("✅ 底层算法库和空间数据库加载完成！Web 服务启动。")
+# 全局挂载引擎，避免 API 每次请求都重新加载（加速 100 倍）
+print("⏳ 正在初始化全局路网数据库...")
+G_ENGINE = demo_v4.GeoSpatialEngine("7级AOI（末端网格）0204.csv", "合规的FAP设施点0202.csv")
+R_ENGINE = demo_v4.FiberRoutingEngine(["中继段-1.CSV", "中继段-2.CSV"], ["传输网元查询-2026-02-10-1770716023730_1.csv", "传输网元查询-2026-02-10-1770716023730_2.csv"])
+print("✅ 路网数据库已就绪。")
 
 app = Flask(__name__, static_folder='/Users/jesspu/.openclaw/workspace/codes/fiber-routing-web/static', static_url_path='')
 
@@ -51,62 +56,62 @@ app = Flask(__name__, static_folder='/Users/jesspu/.openclaw/workspace/codes/fib
 def index():
     return app.send_static_file('index.html')
 
+# ==========================================
+# 核心逻辑 C：地址解析 (带详细地址回显)
+# ==========================================
 @app.route('/api/geocode', methods=['POST'])
 def geocode():
     address = request.json.get('address')
-    url = "https://nominatim.openstreetmap.org/search?q=" + urllib.parse.quote(address) + "&format=json&limit=1"
-    req = urllib.request.Request(url, headers={'User-Agent': 'FiberRoutingApp/1.0'})
+    # 使用 Nominatim 获取详细结构化地址 (WGS84)
+    url = "https://nominatim.openstreetmap.org/search?q=" + urllib.parse.quote(address) + "&format=json&limit=1&addressdetails=1"
+    req = urllib.request.Request(url, headers={'User-Agent': 'FiberRoutingPRO/5.3'})
     try:
         with urllib.request.urlopen(req) as response:
             data = json.loads(response.read().decode())
             if data:
-                return jsonify({"lon": float(data[0]['lon']), "lat": float(data[0]['lat']), "name": data[0]['display_name']})
+                # 提取显示名称和坐标
+                return jsonify({
+                    "lon": float(data[0]['lon']),
+                    "lat": float(data[0]['lat']),
+                    "display_name": data[0]['display_name'], # 详细地址回显
+                    "source": "WGS84"
+                })
             else:
-                return jsonify({"error": "未找到地址"}), 404
+                return jsonify({"error": "未能在地图库中定位到该地址，请尝试更精确的名称"}), 404
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": f"地图接口连接异常: {str(e)}"}), 500
 
+# ==========================================
+# 核心逻辑 D：研报生成模块
+# ==========================================
 def generate_markdown_report(data):
-    md = f"## 📝 1. 勘查全局概述\n\n"
-    lon, lat = data['query_coordinates']['lon'], data['query_coordinates']['lat']
-    md += f"- **目标坐标**：`{lon}, {lat}`\n"
+    md = f"## 📝 勘查全局概述\n\n"
+    md += f"- **目标坐标**：`{data['query_coordinates']['lon']}, {data['query_coordinates']['lat']}`\n"
     aois = data.get('matched_aoi_geofence', [])
-    if aois:
-        md += f"- **命中网格**：`{' | '.join(aois)}`\n"
-    else:
-        md += f"- **命中网格**：未命中专属园区网格，将按开放区域核算。\n"
+    md += f"- **命中网格**：`{' | '.join(aois) if aois else '未命中特定园区'}`\n"
     
     cands = data.get('fap_to_equipment_candidates', [])
-    md += f"- **周边 FAP 资源**：系统在周边找到了 **{len(cands)} 个**候选接入点。\n\n---\n\n"
+    md += f"- **发现 FAP 点**：{len(cands)} 个候选接入点。\n\n---\n\n"
     
     for i, cand in enumerate(cands):
         md += f"## 🏆 方案 {i+1}：接入 {cand['fap_name']}\n"
-        md += f"- **起步光交距离**：{cand['distance_to_query_point_meters']} 米\n"
-        md += f"- **光交详细位置**：{cand['fap_physical_location']}\n\n"
+        md += f"> 起步距离: {cand['distance_to_query_point_meters']}m | FAP 位置: {cand['fap_physical_location']}\n\n"
         
-        # 报告中简要列出子方案信息
-        md += "### 🛰️ 候选路由方案列表\n\n"
-        
-        def render_plan_summary(p, label_prefix):
-            res = f"- **{label_prefix}**：{p['jumps']}跳, {p['distance_meters']}米, 终点: {p['found_at_node']}\n"
-            res += "  - **📡 目标设备**：\n"
-            res += "    | 网元名称 | 生命周期状态 |\n    | :--- | :--- |\n"
-            for eq in p.get('equipments_found', []):
-                res += f"    | `{eq.get('网元名称','')}` | {eq.get('生命周期状态','')} |\n"
-            res += "\n"
+        def render_plans(plans, title_prefix):
+            res = ""
+            if isinstance(plans, list):
+                for j, p in enumerate(plans):
+                    res += f"### {title_prefix}-{j+1}\n"
+                    res += f"- **详情**：{p['jumps']}跳 | {p['distance_meters']}米 | 终点: {p['found_at_node']}\n"
+                    res += "  - **📡 目标设备清单**：\n"
+                    res += "    | 网元名称 | 生命周期状态 |\n    | :--- | :--- |\n"
+                    for eq in p.get('equipments_found', []):
+                        res += f"    | `{eq.get('网元名称','')}` | {eq.get('生命周期状态','')} |\n"
+                    res += "\n"
             return res
 
-        plans_a = cand.get('equipment_routing_plans', [])
-        if isinstance(plans_a, dict) and 'error' in plans_a: plans_a = []
-        for j, p in enumerate(plans_a):
-            md += render_plan_summary(p, f"🌟 子方案 A-{j+1} (最近接入)")
-            
-        plans_b = cand.get('transmission_room_routing_plans', [])
-        if isinstance(plans_b, dict) and 'error' in plans_b: plans_b = []
-        for j, p in enumerate(plans_b):
-            md += render_plan_summary(p, f"🛡️ 子方案 B-{j+1} (传输机房)")
-            
-        md += "\n> 请查看下方交互式拓扑图了解全路径详情及各段资源分布。\n\n"
+        md += render_plans(cand.get('equipment_routing_plans', []), "🌟 子方案A (最近)")
+        md += render_plans(cand.get('transmission_room_routing_plans', []), "🛡️ 子方案B (可靠)")
         md += "---\n\n"
     return md
 
@@ -117,22 +122,14 @@ def plan():
         lon = float(data['lon'])
         lat = float(data['lat'])
         
-        # 默认执行纠偏 (GCJ-02 -> WGS84)，除非明确传参说明是 wgs84
+        # 判断来源，若是高德点击(GCJ-02)，则执行纠偏
         is_wgs84 = data.get('is_wgs84', False)
-        
         if not is_wgs84:
             lon, lat = gcj02_to_wgs84(lon, lat)
-            print(f"DEBUG: 坐标已纠偏 (GCJ-02 -> WGS84): {lon}, {lat}")
             
         net_type = data.get('type', 'PTN')
-        
-        import importlib
-        importlib.reload(demo_v4)
-        # 重新初始化引擎（因为 demo_v4 代码变了）
-        g_engine = demo_v4.GeoSpatialEngine("7级AOI（末端网格）0204.csv", "合规的FAP设施点0202.csv")
-        r_engine = demo_v4.FiberRoutingEngine(["中继段-1.CSV", "中继段-2.CSV"], ["传输网元查询-2026-02-10-1770716023730_1.csv", "传输网元查询-2026-02-10-1770716023730_2.csv"])
-        
-        raw_result = demo_v4.find_fap_to_equipment_route(g_engine, r_engine, lon, lat, net_type)
+        # 调用全局常驻引擎（极致响应）
+        raw_result = demo_v4.find_fap_to_equipment_route(G_ENGINE, R_ENGINE, lon, lat, net_type)
         markdown_report = generate_markdown_report(raw_result)
         
         return jsonify({
@@ -140,8 +137,6 @@ def plan():
             "markdown": markdown_report
         })
     except Exception as e:
-        import traceback
-        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
