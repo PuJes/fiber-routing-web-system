@@ -153,14 +153,19 @@
             const edges = [];
             const nodeIds = new Set();
 
-            function clean(s) { return String(s).replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, ''); }
+            function cleanId(s) { 
+                return String(s).replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, '').trim(); 
+            }
 
             function addNode(name, type, isEnd = false) {
-                const id = clean(name);
+                // 彻底清洗名称，移除任何可能的后缀干扰，确保唯一性
+                let displayName = name.split(')-').pop() || name;
+                displayName = displayName.split(' (目标网元')[0].trim();
+                const id = cleanId(displayName);
+
                 if (!nodeIds.has(id)) {
                     let color = '#94a3b8'; // 中间节点：灰色
                     let border = '#64748b';
-                    let label = name;
                     
                     if (type === 'fap') { 
                         color = '#3b82f6'; // 起点：蓝色
@@ -172,14 +177,14 @@
 
                     nodes.push({
                         id: id,
-                        label: label,
-                        shape: 'dot', // 改为圆点
+                        label: displayName, // 使用清洗后的名称作为标注
+                        shape: 'dot',
                         size: 15,
                         font: { 
                             size: 12, 
                             face: 'Inter', 
                             color: '#334155',
-                            vadjust: -35 // 将文字标注放在圆点上方
+                            vadjust: -35 
                         },
                         color: { 
                             background: color, 
@@ -194,53 +199,34 @@
                 return id;
             }
 
-            // 处理所有 A 和 B 方案
             const plans = [...(cand.equipment_routing_plans || []), ...(cand.transmission_room_routing_plans || [])];
             
-            plans.forEach((plan, pIdx) => {
+            plans.forEach((plan) => {
                 if(!plan || plan.status !== 'success') return;
                 const pathParts = plan.routing.split('->');
                 
                 pathParts.forEach((p, idx) => {
-                    // 核心修复：更鲁棒的节点名称提取逻辑，防止同一个点因为标注不同产生多个分身
-                    let name = p;
-                    if (p.includes(')-')) {
-                        name = p.split(')-').pop();
-                    }
-                    if (name.includes(' (目标网元')) {
-                        name = name.split(' (目标网元')[0];
-                    }
-                    // 进一步清洗名称，确保起点在所有路径中 ID 绝对一致
-                    name = name.trim();
-
                     const isFap = (idx === 0);
                     const isEnd = (idx === pathParts.length - 1);
-                    const nodeId = addNode(name, isFap ? 'fap' : 'mid', isEnd);
+                    const nodeId = addNode(p, isFap ? 'fap' : 'mid', isEnd);
 
                     if (idx > 0) {
-                        let prevName = pathParts[idx-1];
-                        if (prevName.includes(')-')) {
-                            prevName = prevName.split(')-').pop();
-                        }
-                        prevName = prevName.trim();
-                        const prevId = clean(prevName);
+                        const prevNodeId = cleanId((pathParts[idx-1].split(')-').pop() || pathParts[idx-1]).split(' (目标网元')[0]);
                         
-                        // 连线信息提取
                         const edgeInfo = plan.path_details[idx-1];
                         const label = `${edgeInfo.空闲数量}/${edgeInfo.中继纤芯数量}\n${edgeInfo.长度}m`;
                         
-                        // 连线重复性检查
-                        const edgeExists = edges.some(e => e.from === prevId && e.to === nodeId);
+                        const edgeExists = edges.some(e => e.from === prevNodeId && e.to === nodeId);
                         if (!edgeExists) {
                             edges.push({
-                                from: prevId,
+                                from: prevNodeId,
                                 to: nodeId,
                                 label: label,
                                 font: { size: 10, align: 'middle', color: '#059669', background: 'rgba(255,255,255,0.7)' },
                                 arrows: 'to',
                                 color: { color: '#10b981', opacity: 0.6 },
                                 width: 2,
-                                smooth: { enabled: false } // 改为直线
+                                smooth: { enabled: false }
                             });
                         }
                     }

@@ -87,15 +87,24 @@ def generate_markdown_report(data):
         # 报告中简要列出子方案信息
         md += "### 🛰️ 候选路由方案列表\n\n"
         
+        def render_plan_summary(p, label_prefix):
+            res = f"- **{label_prefix}**：{p['jumps']}跳, {p['distance_meters']}米, 终点: {p['found_at_node']}\n"
+            res += "  - **📡 目标设备**：\n"
+            res += "    | 网元名称 | 生命周期状态 |\n    | :--- | :--- |\n"
+            for eq in p.get('equipments_found', []):
+                res += f"    | `{eq.get('网元名称','')}` | {eq.get('生命周期状态','')} |\n"
+            res += "\n"
+            return res
+
         plans_a = cand.get('equipment_routing_plans', [])
         if isinstance(plans_a, dict) and 'error' in plans_a: plans_a = []
         for j, p in enumerate(plans_a):
-            md += f"- **🌟 子方案 A-{j+1} (最近接入)**：{p['jumps']}跳, {p['distance_meters']}米, 终点: {p['found_at_node']}\n"
+            md += render_plan_summary(p, f"🌟 子方案 A-{j+1} (最近接入)")
             
         plans_b = cand.get('transmission_room_routing_plans', [])
         if isinstance(plans_b, dict) and 'error' in plans_b: plans_b = []
         for j, p in enumerate(plans_b):
-            md += f"- **🛡️ 子方案 B-{j+1} (传输机房)**：{p['jumps']}跳, {p['distance_meters']}米, 终点: {p['found_at_node']}\n"
+            md += render_plan_summary(p, f"🛡️ 子方案 B-{j+1} (传输机房)")
             
         md += "\n> 请查看下方交互式拓扑图了解全路径详情及各段资源分布。\n\n"
         md += "---\n\n"
