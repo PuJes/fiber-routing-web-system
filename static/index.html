@@ -211,7 +211,6 @@
             const container = document.getElementById('reportContainer');
             container.innerHTML = ""; 
             
-            // 修正：更精确的方案拆分逻辑，防止文字丢失
             const reportParts = data.markdown.split('---');
             
             // 1. 渲染全局概述
@@ -226,12 +225,15 @@
                 const card = document.createElement('div');
                 card.className = "plan-card";
                 
-                // 确保即使 Markdown 拆分逻辑有问题，也能显示基本的方案标题
-                let planMarkdown = reportParts[i + 1] || "无法加载该方案的详细文字说明，请检查数据。";
+                let planMarkdown = reportParts[i + 1] || "无法加载该方案详情";
                 
+                // 核心修复：前端强行在表格语法前后补齐空行，确保 marked.parse 能识别
+                planMarkdown = planMarkdown.replace(/(\|.*\|)\n(\| :---)/g, "$1\n\n$2");
+                planMarkdown = planMarkdown.replace(/(\|.*\|)\n(?![\|])/g, "$1\n\n");
+
                 card.innerHTML = `
                     <div class="network-container shadow-xl" id="net_combined_${i}"></div>
-                    <div class="markdown-body mt-8">${marked.parse(planMarkdown)}</div>
+                    <div class="markdown-body mt-8">${marked.parse(planMarkdown.trim())}</div>
                 `;
                 container.appendChild(card);
                 renderCombinedNetwork(document.getElementById(`net_combined_${i}`), cand);
