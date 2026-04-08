@@ -116,10 +116,13 @@ def plan():
         data = request.json
         lon = float(data['lon'])
         lat = float(data['lat'])
-        is_gcj02 = data.get('is_gcj02', False)
         
-        if is_gcj02:
+        # 默认执行纠偏 (GCJ-02 -> WGS84)，除非明确传参说明是 wgs84
+        is_wgs84 = data.get('is_wgs84', False)
+        
+        if not is_wgs84:
             lon, lat = gcj02_to_wgs84(lon, lat)
+            print(f"DEBUG: 坐标已纠偏 (GCJ-02 -> WGS84): {lon}, {lat}")
             
         net_type = data.get('type', 'PTN')
         

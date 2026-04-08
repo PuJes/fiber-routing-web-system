@@ -79,7 +79,7 @@
                 <!-- Configuration Section -->
                 <section>
                     <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">2. 算路参数设置</label>
-                    <div class="grid grid-cols-2 gap-3 mb-4">
+                    <div class="grid grid-cols-2 gap-3 mb-2">
                         <div class="space-y-1">
                             <span class="text-[10px] text-slate-400 font-bold ml-1">经度 (LON)</span>
                             <input type="number" id="lonInput" step="0.000001" class="w-full border border-slate-200 rounded-xl p-3 text-sm font-mono focus:border-sky-500 outline-none bg-slate-50" placeholder="114.xxx">
@@ -89,6 +89,7 @@
                             <input type="number" id="latInput" step="0.000001" class="w-full border border-slate-200 rounded-xl p-3 text-sm font-mono focus:border-sky-500 outline-none bg-slate-50" placeholder="22.xxx">
                         </div>
                     </div>
+                    <p id="coordStatus" class="text-[10px] mb-4 text-slate-400 italic px-1">当前底图使用高德坐标系，算路时将自动校准</p>
                     
                     <div class="space-y-1 mb-6">
                         <span class="text-[10px] text-slate-400 font-bold ml-1">目标寻路网络</span>
@@ -128,21 +129,27 @@
 
     <script>
         let map, marker;
-        function initMap() {
-            try {
-                map = L.map('map', { zoomControl: false }).setView([22.5428, 114.0531], 13);
-                L.control.zoom({ position: 'bottomright' }).addTo(map);
-                L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
-                    subdomains: ['1', '2', '3', '4'],
-                    maxZoom: 18
-                }).addTo(map);
+        // Init Map
+        map = L.map('map', { zoomControl: false }).setView([22.5428, 114.0531], 13);
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
+        // 使用高德地图底图 (GCJ-02 坐标系)
+        L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
+            subdomains: ['1', '2', '3', '4'],
+            maxZoom: 18
+        }).addTo(map);
 
-                map.on('click', e => {
-                    document.getElementById('latInput').value = e.latlng.lat.toFixed(6);
-                    document.getElementById('lonInput').value = e.latlng.lng.toFixed(6);
-                    if(marker) map.removeLayer(marker);
-                    marker = L.marker(e.latlng).addTo(map);
-                });
+        map.on('click', e => {
+            // 地图点击获取的是 GCJ-02 坐标
+            document.getElementById('latInput').value = e.latlng.lat.toFixed(6);
+            document.getElementById('lonInput').value = e.latlng.lng.toFixed(6);
+            
+            // 界面提示：当前为火星坐标，后端会自动纠偏
+            document.getElementById('coordStatus').innerText = "已获取火星坐标 (GCJ-02)，系统将自动校准为 WGS84";
+            document.getElementById('coordStatus').style.color = "#f59e0b";
+
+            if(marker) map.removeLayer(marker);
+            marker = L.marker(e.latlng).addTo(map);
+        });
             } catch (e) {
                 console.error("Map init error:", e);
             }
